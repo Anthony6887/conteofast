@@ -1,0 +1,268 @@
+
+# ============================================================
+# CONTEOFAST - GITIGNORE GENERAL
+# Proyectos:
+#   app-ionic        -> Ionic / Angular / Capacitor
+#   web-estadisticas -> Next.js / TypeScript
+#   backend-conteo   -> Node.js
+# ============================================================
+
+
+# ============================================================
+# 1. DEPENDENCIAS NODE.JS
+# ============================================================
+
+**/node_modules/
+**/bower_components/
+**/.npm/
+**/.pnpm-store/
+**/.yarn/cache/
+**/.yarn/unplugged/
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+
+# ============================================================
+# 2. VARIABLES DE ENTORNO Y CREDENCIALES
+# ============================================================
+
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+
+*.pem
+*.p12
+*.pfx
+*.keystore
+*.jks
+*.mobileprovision
+
+**/credentials/
+**/secrets/
+**/.secrets/
+
+
+# ============================================================
+# 3. ARCHIVOS TEMPORALES
+# ============================================================
+
+*~
+*.sw[mnpcod]
+*.tmp
+*.tmp.*
+.tmp/
+**/.tmp/
+**/tmp/
+
+*.bak
+*.old
+*.orig
+
+$RECYCLE.BIN/
+
+
+# ============================================================
+# 4. LOGS
+# ============================================================
+
+*.log
+*.log.*
+log.txt
+debug.log
+error.log
+
+**/logs/
+**/log/
+
+libpeerconnection.log
+testem.log
+
+
+# ============================================================
+# 5. NEXT.JS - WEB ESTADISTICAS
+# ============================================================
+
+**/.next/
+**/.vercel/
+**/.turbo/
+**/out/
+
+web-estadisticas/next-env.d.ts
+web-estadisticas/*.tsbuildinfo
+
+
+# ============================================================
+# 6. IONIC / ANGULAR
+# ============================================================
+
+app-ionic/.ionic/
+app-ionic/.angular/
+app-ionic/.sourcemaps/
+app-ionic/.versions/
+
+app-ionic/www/
+app-ionic/dist/
+app-ionic/coverage/
+app-ionic/out-tsc/
+app-ionic/bazel-out/
+
+app-ionic/platforms/
+app-ionic/plugins/
+
+**/.angular/cache/
+**/.sass-cache/
+**/.nx/cache/
+
+
+# ============================================================
+# 7. CAPACITOR - ANDROID
+# ============================================================
+
+app-ionic/android/.gradle/
+app-ionic/android/.idea/
+app-ionic/android/build/
+app-ionic/android/app/build/
+app-ionic/android/local.properties
+
+*.apk
+*.aab
+
+# No ignorar toda la carpeta android.
+# Se conserva el codigo nativo necesario para compilar.
+
+
+# ============================================================
+# 8. CAPACITOR - IOS
+# ============================================================
+
+app-ionic/ios/Pods/
+app-ionic/ios/build/
+app-ionic/ios/DerivedData/
+
+**/xcuserdata/
+*.xcuserstate
+UserInterfaceState.xcuserstate
+
+# No ignorar toda la carpeta ios.
+# Se conserva el proyecto Xcode.
+
+
+# ============================================================
+# 9. BACKEND NODE.JS
+# ============================================================
+
+backend-conteo/dist/
+backend-conteo/build/
+backend-conteo/coverage/
+backend-conteo/.cache/
+backend-conteo/.nyc_output/
+
+# Archivos generados o subidos por usuarios
+backend-conteo/uploads/
+backend-conteo/temp/
+backend-conteo/tmp/
+
+# Bases de datos locales
+*.sqlite
+*.sqlite3
+*.db
+
+
+# ============================================================
+# 10. DIRECTORIOS GENERADOS EN CUALQUIER PROYECTO
+# ============================================================
+
+**/dist/
+**/build/
+**/coverage/
+**/.cache/
+**/.nyc_output/
+
+**/uploads/
+
+
+# ============================================================
+# 11. IDE Y EDITORES
+# ============================================================
+
+.idea/
+.project
+.classpath
+.c9/
+
+*.launch
+.settings/
+
+*.sublime-project
+*.sublime-workspace
+
+
+# ============================================================
+# 12. VISUAL STUDIO CODE
+# ============================================================
+
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+**/.history/
+.history/
+
+
+# ============================================================
+# 13. TYPESCRIPT Y HERRAMIENTAS
+# ============================================================
+
+*.tsbuildinfo
+**/typings/
+**/connect.lock
+
+
+# ============================================================
+# 14. ARCHIVOS DEL SISTEMA
+# ============================================================
+
+.DS_Store
+Thumbs.db
+Thumbs.db:encryptable
+desktop.ini
+
+**/.Spotlight-V100/
+**/.Trashes/
+
+
+# ============================================================
+# 15. ARCHIVOS DE COMPRESION TEMPORALES
+# ============================================================
+
+*.zip.tmp
+*.tar.tmp
+
+
+# ============================================================
+# 16. ARCHIVOS QUE SI SE DEBEN SUBIR
+# ============================================================
+
+# package.json
+# package-lock.json
+# tsconfig.json
+# angular.json
+# ionic.config.json
+# capacitor.config.ts
+# next.config.ts
+# README.md
+# src/
+# public/
+# assets/
+# app-ionic/android/ (excepto archivos generados)
+# app-ionic/ios/ (excepto archivos generados)
+
+# ============================================================
+# FIN - CONTEOFAST
+# ============================================================

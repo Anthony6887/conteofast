@@ -1,0 +1,12 @@
+ backend-conteo/.dockerignore                      |    5 [32m+[m
+ backend-conteo/.gitattributes                     |    2 [32m+[m
+ backend-conteo/.gitignore                         |  268 [32m++[m
+ backend-conteo/Dockerfile                         |   27 [32m+[m
+ backend-conteo/config/config.json                 |   23 [32m+[m
+ backend-conteo/controllers/lecturas.controller.js |  147 [32m+[m
+ backend-conteo/index.js                           |   42 [32m+[m
+ backend-conteo/models/index.js                    |   48 [32m+[m
+ backend-conteo/package-lock.json                  | 3345 [32m+++++++++++++++++++++[m
+ backend-conteo/package.json                       |   31 [32m+[m
+ backend-conteo/routes/auth.routes.js              |    9 [32m+[m
+ 11 files changed, 3947 insertions(+)
