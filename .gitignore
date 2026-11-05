@@ -1,0 +1,36 @@
+﻿# DEPENDENCIAS
+**/node_modules/
+
+# NEXT.JS
+**/.next/
+**/out/
+
+# IONIC / ANGULAR
+**/www/
+**/dist/
+**/.angular/
+**/coverage/
+
+# VARIABLES DE ENTORNO
+**/.env
+**/.env.*
+!**/.env.example
+
+# CREDENCIALES Y CERTIFICADOS
+*.keystore
+*.jks
+*.p12
+*.mobileprovision
+
+# ARCHIVOS TEMPORALES
+*.log
+.DS_Store
+Thumbs.db
+
+# ANDROID
+**/android/.gradle/
+**/android/local.properties
+
+# IOS
+**/ios/Pods/
+**/ios/DerivedData/
