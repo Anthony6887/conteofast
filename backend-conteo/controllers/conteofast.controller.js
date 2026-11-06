@@ -53,7 +53,7 @@ async function catalogos(_req, res) {
          ORDER BY r.parroquia, r.nombre, j.tipo, j.numero
       `, { type: QueryTypes.SELECT }),
       sequelize.query(`
-        SELECT id, nombre, tipo, modalidad, numero_lista, circunscripcion_id
+        SELECT id, nombre, tipo, modalidad, numero_lista, circunscripcion_id, ambito
           FROM cf_candidatos
          WHERE eleccion_id = :eleccionId AND activo = 1
          ORDER BY FIELD(tipo, 'ALCALDE', 'CONCEJAL'), id
@@ -293,14 +293,14 @@ async function resumen(_req, res) {
     const eleccionIdActual = eleccionId();
     const [candidatos, juntas] = await Promise.all([
       sequelize.query(`
-        SELECT c.id AS candidato_id, c.nombre, c.tipo, c.modalidad, c.numero_lista,
+        SELECT c.id AS candidato_id, c.nombre, c.tipo, c.modalidad, c.numero_lista, c.ambito,
                COALESCE(SUM(CASE WHEN r.estado = 'CONFIRMADO'
                     AND r.eleccion_id = :eleccionId THEN v.votos ELSE 0 END),0) AS total_votos
           FROM cf_candidatos c
           LEFT JOIN cf_registro_votos v ON v.candidato_id = c.id
           LEFT JOIN cf_registros r ON r.id = v.registro_id
          WHERE c.eleccion_id = :eleccionId AND c.activo = 1
-         GROUP BY c.id, c.nombre, c.tipo, c.modalidad, c.numero_lista
+         GROUP BY c.id, c.nombre, c.tipo, c.modalidad, c.numero_lista, c.ambito
          ORDER BY FIELD(c.tipo,'ALCALDE','CONCEJAL'), total_votos DESC
       `, { type: QueryTypes.SELECT, replacements: { eleccionId: eleccionIdActual } }),
       sequelize.query(`

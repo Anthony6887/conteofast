@@ -24,6 +24,7 @@ export interface CfCandidato {
   modalidad: 'INDIVIDUAL' | 'LISTA';
   numero_lista: string | null;
   circunscripcion_id: number | null;
+  ambito: 'URBANO' | 'RURAL' | null;
 }
 
 export interface CfCatalogos {
