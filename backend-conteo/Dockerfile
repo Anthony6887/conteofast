@@ -1,27 +1,33 @@
-# Imagen base de Node.js
-FROM node:18
 
-# Instalar dependencias necesarias del sistema
-RUN apt-get update && apt-get install -y \
-  libaio1 \
-  unzip \
-  && rm -rf /var/lib/apt/lists/*
+# ==========================================
+# CONTEOFAST - BACKEND NODE.JS
+# ==========================================
 
-WORKDIR /usr/src/app
+FROM node:24-bookworm-slim
 
-COPY package*.json ./
+# Directorio de trabajo
+WORKDIR /app
 
-RUN npm install
+# Configuracion de produccion
+ENV NODE_ENV=production
+ENV PORT=5002
+ENV TZ=America/Guayaquil
 
-COPY . .
+# Copiar dependencias
+COPY package.json package-lock.json ./
 
-COPY oracle_instantclient/instantclient_23_6 /oracle_instantclient/instantclient_23_6
+# Instalar solo dependencias de produccion
+RUN npm ci --omit=dev \
+  && npm cache clean --force
 
-ENV LD_LIBRARY_PATH=/oracle_instantclient/instantclient_23_6
-ENV PATH=/oracle_instantclient/instantclient_23_6:$PATH
-ENV OCI_LIB_DIR=/oracle_instantclient/instantclient_23_6
-ENV OCI_INC_DIR=/oracle_instantclient/instantclient_23_6/sdk/include
+# Copiar el proyecto
+COPY --chown=node:node . .
 
-EXPOSE 3000
+# Ejecutar con usuario sin privilegios
+USER node
 
+# Puerto de Express
+EXPOSE 5002
+
+# Iniciar API
 CMD ["node", "index.js"]
