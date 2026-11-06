@@ -1,21 +1,36 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title> Blank EJEMPLO</ion-title>
-  </ion-toolbar>
-</ion-header>
+<ion-content [fullscreen]="true" class="inicio-content">
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Blank dasd</ion-title>
-    </ion-toolbar>
-  </ion-header>
+  <main class="pantalla-inicio">
 
-  <div id="container">
-    <strong>Ready to create an app?</strong>
-    <p>
-      Start with Ionic
-      <a target="_blank" rel="noopener noreferrer" href="https://ionicframework.com/docs/components">UI Components</a>
-    </p>
-  </div>
+    <div class="inicio-contenedor">
+
+      <!-- IDENTIDAD -->
+      <section class="identidad">
+
+        <h1>CONTROL ELECTORAL</h1>
+
+      </section>
+
+      <!-- MODULO PRINCIPAL -->
+      <section class="modulo-principal">
+
+        <a routerLink="/registro" class="boton-registro" aria-label="Ingresar al formulario de registro de votos">
+
+          <span>Ingresar registro</span>
+
+          <ion-icon name="arrow-forward-outline"></ion-icon>
+
+        </a>
+
+      </section>
+
+      <!-- PIE -->
+      <footer class="pie-app">
+        Conteofast 1.0
+      </footer>
+
+    </div>
+
+  </main>
+
 </ion-content>

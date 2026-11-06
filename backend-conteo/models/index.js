@@ -1,48 +1,51 @@
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
-const Sequelize = require('sequelize-oracle');
-const oracledb = require('oracledb');
-//oracledb.initOracleClient({ libDir: 'C:\\oracle\\instantclient_19_25' });
-oracledb.initOracleClient({libDir: 'C:\\oracle\\instantclient_23_6'});
-const process = require('process');
+const fs = require('node:fs');
+const path = require('node:path');
+const { Sequelize, DataTypes } = require('sequelize');
+
 const basename = path.basename(__filename);
 const env = process.env.NODE_ENV || 'development';
-const config = require(__dirname + '/../config/config.json')[env];
-const db = {};
+const config = require('../config/config.js')[env];
 
-let sequelize;
-if (config.use_env_variable) {
-  sequelize = new Sequelize(process.env[config.use_env_variable], config);
-} else {
-  sequelize = new Sequelize(config.database, config.username, config.password, config);
+if (!config) throw new Error(`NODE_ENV no reconocido: ${env}`);
+if (!config.password) throw new Error('Falta DB_PASSWORD en el archivo .env');
+if (!Number.isInteger(config.port) || config.port < 1 || config.port > 65535) {
+  throw new Error('DB_PORT inválido');
 }
 
-fs
-  .readdirSync(__dirname)
-  .filter(file => {
-    return (
-      file.indexOf('.') !== 0 &&
-      file !== basename &&
-      file.slice(-3) === '.js' &&
-      file.indexOf('.test.js') === -1
-    );
-  })
+const sequelize = new Sequelize(
+  config.database,
+  config.username,
+  config.password,
+  {
+    host: config.host,
+    port: config.port,
+    dialect: config.dialect,
+    logging: config.logging,
+    pool: config.pool,
+    dialectOptions: config.dialectOptions,
+    define: { freezeTableName: true, timestamps: false }
+  }
+);
+
+const db = {};
+fs.readdirSync(__dirname)
+  .filter(file => file[0] !== '.' && file !== basename && file.endsWith('.js') && !file.endsWith('.test.js'))
   .forEach(file => {
-    const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes);
+    const imported = require(path.join(__dirname, file));
+    if (typeof imported !== 'function') return;
+    const model = imported(sequelize, DataTypes);
     db[model.name] = model;
   });
 
-Object.keys(db).forEach(modelName => {
-  if (db[modelName].associate) {
+for (const modelName of Object.keys(db)) {
+  if (typeof db[modelName].associate === 'function') {
     db[modelName].associate(db);
   }
-});
+}
 
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
 
 module.exports = db;
-
-

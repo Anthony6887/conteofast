@@ -1,0 +1,389 @@
+:host {
+    --azul: #123d70;
+    --azul-fuerte: #0c315d;
+    --borde: #d6e0ed;
+    --texto: #192f4d;
+    --muted: #667b93;
+}
+
+.cabecera-registro {
+    --background: #ffffff;
+    --color: var(--azul);
+    --min-height: 52px;
+    --border-width: 0;
+
+    ion-title {
+        font-size: 16px;
+        font-weight: 800;
+    }
+
+    ion-back-button {
+        --color: var(--azul);
+    }
+}
+
+.registro-content {
+    --background: #f2f5fa;
+}
+
+.registro-container {
+    width: min(100%, 540px);
+    margin: 0 auto;
+    padding: 14px 12px 28px;
+    color: var(--texto);
+}
+
+.encabezado {
+    margin: 0 2px 12px;
+
+    h1 {
+        font-size: 21px;
+        line-height: 1.2;
+        color: #122f55;
+        font-weight: 800;
+        margin: 0 0 4px;
+    }
+
+    p {
+        font-size: 12px;
+        color: var(--muted);
+        margin: 0;
+    }
+}
+
+.tarjeta {
+    background: #ffffff;
+    border: 1px solid var(--borde);
+    border-radius: 13px;
+    padding: 13px;
+    margin-bottom: 10px;
+}
+
+.paso,
+.acceso>label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--azul-fuerte);
+    margin-bottom: 8px;
+}
+
+.paso span {
+    width: 21px;
+    height: 21px;
+    flex: 0 0 21px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: #e7effa;
+    color: var(--azul);
+    font-size: 11px;
+}
+
+.segundo,
+.tercero {
+    margin-top: 15px;
+}
+
+select,
+input {
+    width: 100%;
+    min-height: 43px;
+    padding: 9px 11px;
+    border: 1px solid #cad7e6;
+    border-radius: 9px;
+    background: #ffffff;
+    font-family: inherit;
+    font-size: 13px;
+    color: #173354;
+    outline: none;
+}
+
+select:focus,
+input:focus {
+    border-color: #2475cf;
+    box-shadow: 0 0 0 2px rgb(36 117 207 / 12%);
+}
+
+button {
+    font-family: inherit;
+    cursor: pointer;
+    transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+button:disabled,
+select:disabled,
+input:disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
+}
+
+.selector-tipo {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+
+    button {
+        min-height: 43px;
+        border: 1px solid #cddbea;
+        border-radius: 9px;
+        color: var(--azul);
+        background: #f5f8fc;
+        font-size: 13px;
+        font-weight: 800;
+    }
+
+    button.activo {
+        background: var(--azul);
+        color: #ffffff;
+        border-color: var(--azul);
+    }
+}
+
+.numeros-juntas {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 7px;
+
+    button {
+        height: 41px;
+        padding: 0;
+        border-radius: 9px;
+        border: 1px solid #cddbea;
+        color: var(--azul);
+        background: #f5f8fc;
+        font-size: 13px;
+        font-weight: 800;
+    }
+
+    button.activo {
+        background: var(--azul);
+        color: #ffffff;
+        border-color: var(--azul);
+    }
+}
+
+.junta-resumen {
+    margin-top: 11px;
+    padding: 9px 10px;
+    background: #edf5ff;
+    border-radius: 9px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    color: var(--azul);
+    font-size: 12px;
+
+    strong {
+        font-weight: 800;
+    }
+
+    small {
+        color: #6c7f98;
+        font-size: 10px;
+    }
+}
+
+.votos-tarjeta {
+    padding: 12px 13px 6px;
+}
+
+.titulo-grupo {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 7px;
+
+    h2 {
+        margin: 0;
+        font-size: 15px;
+        color: var(--azul);
+        font-weight: 800;
+    }
+
+    span {
+        color: #5e738f;
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+}
+
+.fila-candidato {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: space-between;
+    padding: 9px 0;
+    border-top: 1px solid #edf1f6;
+
+    label {
+        flex: 1;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.35;
+        color: #223b5c;
+
+        small {
+            display: inline-block;
+            margin-left: 5px;
+            color: #647a95;
+            font-size: 10px;
+        }
+    }
+
+    input {
+        width: 95px;
+        flex: 0 0 95px;
+        min-height: 42px;
+        text-align: center;
+        font-size: 17px;
+        font-weight: 800;
+    }
+}
+
+.sin-datos,
+.aviso,
+.error,
+.mensaje {
+    padding: 9px 11px;
+    border-radius: 9px;
+    font-size: 12px;
+    line-height: 1.45;
+    margin: 9px 0;
+}
+
+.sin-datos,
+.aviso {
+    background: #eef3f9;
+    color: #5e7490;
+}
+
+.error {
+    background: #fff0f0;
+    color: #a32121;
+}
+
+.mensaje {
+    background: #eaf6ed;
+    color: #206739;
+}
+
+.btn-guardar,
+.btn-otra {
+    width: 100%;
+    border: 0;
+    border-radius: 10px;
+    min-height: 48px;
+    background: var(--azul);
+    color: white;
+    font-weight: 800;
+    font-size: 14px;
+}
+
+.btn-guardar:disabled {
+    background: #8299b8;
+}
+
+.btn-otra {
+    background: #20683c;
+}
+
+.nota {
+    margin: 13px 0 0;
+    text-align: center;
+    font-size: 10px;
+    color: #718198;
+}
+
+@media (max-width: 360px) {
+    .registro-container {
+        padding-left: 9px;
+        padding-right: 9px;
+    }
+
+    .tarjeta {
+        padding: 11px;
+    }
+
+    .numeros-juntas {
+        gap: 5px;
+    }
+
+    .fila-candidato input {
+        width: 78px;
+        flex-basis: 78px;
+    }
+}
+
+/* Reintento cuando el API no responde */
+.btn-reintentar {
+    border: 1px solid #9cb6d8;
+    border-radius: 9px;
+    background: #e6eef9;
+    color: #123d70;
+    font-size: 13px;
+    font-weight: 750;
+    padding: 11px 15px;
+    margin: 0 0 12px;
+    width: 100%;
+}
+
+/* Campos editables de votos, sin apariencia de deshabilitados. */
+.fila-candidato input:not(:disabled) {
+    background: #ffffff;
+    color: #123d70;
+    opacity: 1;
+    border-color: #9db9dd;
+}
+
+.fila-candidato input::placeholder {
+    color: #98a8b9;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.estado-existente {
+    background: #eef4ff;
+    color: #214e85;
+}
+
+.acciones {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+
+    .btn-guardar {
+        flex: 1;
+        min-width: 0;
+    }
+}
+
+.btn-eliminar {
+    flex: 0 0 auto;
+    min-height: 48px;
+    padding: 0 12px;
+    color: #a33131;
+    background: #fff1f1;
+    border: 1px solid #eabbbb;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.btn-otra {
+    margin-top: 8px;
+    background: #e8eff8;
+    border: 1px solid #cbd9eb;
+    color: var(--azul);
+}
+
+.btn-reintentar {
+    min-height: 40px;
+    padding: 0 14px;
+    margin: 8px 0;
+}

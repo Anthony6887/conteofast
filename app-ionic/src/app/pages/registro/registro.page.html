@@ -1,0 +1,127 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar class="cabecera-registro">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/home" text=""></ion-back-button>
+    </ion-buttons>
+    <ion-title>Registro de votos</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="registro-content">
+  <main class="registro-container">
+
+    @if (cargando) {
+    <p class="aviso">Cargando recintos y candidatos...</p>
+    }
+
+    <section class="tarjeta seleccion">
+      <label class="paso" for="recinto"> Recinto electoral</label>
+      <select id="recinto" [ngModel]="recintoId" (ngModelChange)="seleccionarRecinto($event)"
+        [disabled]="cargando || guardando">
+        <option [ngValue]="null">Seleccionar recinto</option>
+        @for (recinto of recintos; track recinto.id) {
+        <option [ngValue]="recinto.id">
+          {{ recinto.parroquia }} · {{ recinto.nombre }}
+        </option>
+        }
+      </select>
+
+      @if (recintoId !== null) {
+      <div class="paso segundo" id="titulo-tipo">Tipo de junta</div>
+      <div class="selector-tipo" role="group" aria-labelledby="titulo-tipo">
+        <button type="button" [class.activo]="tipo === 'F'" [attr.aria-pressed]="tipo === 'F'"
+          [disabled]="!tieneJuntas('F') || guardando" (click)="seleccionarTipo('F')">Femenina</button>
+        <button type="button" [class.activo]="tipo === 'M'" [attr.aria-pressed]="tipo === 'M'"
+          [disabled]="!tieneJuntas('M') || guardando" (click)="seleccionarTipo('M')">Masculina</button>
+      </div>
+      }
+
+      @if (tipo !== null) {
+      <div class="paso tercero" id="titulo-numero"> Número de junta</div>
+      <div class="numeros-juntas" role="group" aria-labelledby="titulo-numero">
+        @for (junta of juntasDisponibles; track junta.id) {
+        <button type="button" [class.activo]="juntaId === junta.id" [attr.aria-pressed]="juntaId === junta.id"
+          [disabled]="guardando" (click)="seleccionarJunta(junta.id)">{{ numeroJunta(junta.numero) }}</button>
+        }
+      </div>
+      }
+
+
+    </section>
+
+    @if (juntaId !== null) {
+    @if (consultando) {
+    <p class="aviso">Consultando votos de esta junta...</p>
+    }
+
+    @if (consultado && registroExistente) {
+    <p class="aviso estado-existente">Esta junta tiene votos guardados. Puedes actualizarlos.</p>
+    }
+
+    <section class="tarjeta votos-tarjeta">
+      <div class="titulo-grupo">
+        <h2>Alcalde</h2>
+        <span>{{ totalAlcalde }} votos</span>
+      </div>
+      @for (c of alcaldes; track c.id) {
+      <div class="fila-candidato">
+        <label [for]="'voto-' + c.id">{{ c.nombre }}</label>
+        <input [id]="'voto-' + c.id" type="number" min="0" step="1" inputmode="numeric" placeholder="0"
+          [(ngModel)]="votos[c.id]" [disabled]="guardando || consultando || !consultado" />
+      </div>
+      } @empty {
+      <p class="sin-datos">No hay candidato a alcalde registrado.</p>
+      }
+    </section>
+
+    <section class="tarjeta votos-tarjeta">
+      <div class="titulo-grupo">
+        <h2>Concejales</h2>
+        <span>{{ totalConcejales }} votos</span>
+      </div>
+      @for (c of concejales; track c.id) {
+      <div class="fila-candidato">
+        <label [for]="'voto-' + c.id">{{ c.nombre }}</label>
+        <input [id]="'voto-' + c.id" type="number" min="0" step="1" inputmode="numeric" placeholder="0"
+          [(ngModel)]="votos[c.id]" [disabled]="guardando || consultando || !consultado" />
+      </div>
+      } @empty {
+      <p class="sin-datos">No hay concejales registrados.</p>
+      }
+    </section>
+
+    @if (error) { <p class="error" role="alert">{{ error }}</p> }
+    @if (mensaje) { <p class="mensaje" role="status">{{ mensaje }}</p> }
+
+    @if (!consultado && !consultando) {
+    <button class="btn-reintentar" type="button" (click)="consultarJunta()">
+      Reintentar consulta
+    </button>
+    }
+
+    <div class="acciones">
+      <button type="button" class="btn-guardar" (click)="guardar()"
+        [disabled]="guardando || consultando || !consultado || !candidatos.length">{{ guardando ? 'Procesando...' :
+        registroExistente ? 'Actualizar votos' : 'Guardar votos' }}</button>
+
+      @if (registroExistente) {
+      <button type="button" class="btn-eliminar" (click)="eliminar()" [disabled]="guardando || consultando">Eliminar
+        registro</button>
+      }
+    </div>
+
+    } @else {
+    @if (error) {
+    <p class="error" role="alert">{{ error }}</p>
+    <button class="btn-reintentar" type="button" (click)="cargar()" [disabled]="cargando">
+      Reintentar carga
+    </button>
+    }
+    @if (!cargando && !error && !recintos.length) {
+    <p class="aviso">No hay juntas disponibles. Revisa los catálogos de MySQL.</p>
+    }
+    }
+
+    <p class="nota">Conteofast 1.0</p>
+  </main>
+</ion-content>

@@ -1,27 +1,277 @@
-#container {
+:host {
+  display: block;
+  height: 100%;
+  color-scheme: light;
+
+  --color-azul: #103d73;
+  --color-azul-oscuro: #092b52;
+  --color-azul-claro: #e8f1fc;
+  --color-negro: #101827;
+  --color-gris: #64748b;
+  --color-blanco: #ffffff;
+  --color-fondo: #edf2f8;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* PANTALLA COMPLETA SIN HEADER */
+
+.inicio-content {
+  --background: var(--color-fondo);
+}
+
+.pantalla-inicio {
+  width: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  padding:
+    calc(24px + env(safe-area-inset-top)) 18px calc(24px + env(safe-area-inset-bottom));
+}
+
+/* CONTENEDOR CENTRAL */
+
+.inicio-contenedor {
+  width: 100%;
+  max-width: 380px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  gap: 30px;
+}
+
+/* IDENTIDAD */
+
+.identidad {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.logo-app {
+  width: 68px;
+  height: 68px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 19px;
+
+  background: var(--color-azul);
+  color: var(--color-blanco);
+
+  font-size: 23px;
+  font-weight: 900;
+  letter-spacing: -1px;
+
+  box-shadow: 0 8px 20px rgba(16, 61, 115, 0.16);
+}
+
+.identidad h1 {
+  margin: 16px 0 5px;
+
+  color: var(--color-negro);
+
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: -1.1px;
+  line-height: 1.2;
+}
+
+.identidad p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-gris);
+}
+
+/* MODULO DE REGISTRO */
+
+.modulo-principal {
+  width: 100%;
+
+  padding: 28px 20px 20px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
   text-align: center;
 
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
+  border-radius: 22px;
+  border: 1px solid #dce6f2;
+
+  background: var(--color-blanco);
+
+  box-shadow:
+    0 8px 30px rgba(15, 23, 42, 0.06);
 }
 
-#container strong {
-  font-size: 20px;
-  line-height: 26px;
+.icono-modulo {
+  width: 68px;
+  height: 68px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 19px;
+
+  background: var(--color-azul-claro);
+  color: var(--color-azul);
 }
 
-#container p {
-  font-size: 16px;
-  line-height: 22px;
-
-  color: #8c8c8c;
-
-  margin: 0;
+.icono-modulo ion-icon {
+  font-size: 34px;
 }
 
-#container a {
+.modulo-principal h2 {
+  margin: 18px 0 6px;
+
+  color: var(--color-negro);
+
+  font-size: 22px;
+  font-weight: 850;
+  letter-spacing: -0.6px;
+}
+
+.modulo-principal p {
+  margin: 0 0 25px;
+
+  color: var(--color-gris);
+
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* BOTON PRINCIPAL */
+
+.boton-registro {
+  width: 100%;
+  min-height: 54px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+
+  padding: 12px 18px;
+
+  border-radius: 12px;
+
+  background: var(--color-azul);
+  color: var(--color-blanco);
+
   text-decoration: none;
+
+  font-size: 15px;
+  font-weight: 800;
+
+  cursor: pointer;
+
+  -webkit-tap-highlight-color: transparent;
+
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.boton-registro ion-icon {
+  font-size: 20px;
+}
+
+.boton-registro:active {
+  transform: scale(0.98);
+  background: var(--color-azul-oscuro);
+}
+
+.boton-registro:focus-visible {
+  outline: 3px solid #75b5ff;
+  outline-offset: 4px;
+}
+
+/* PIE */
+
+.pie-app {
+  text-align: center;
+
+  color: var(--color-gris);
+
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* CELULARES PEQUEÑOS */
+
+@media (max-width: 360px) {
+
+  .pantalla-inicio {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .inicio-contenedor {
+    gap: 23px;
+  }
+
+  .logo-app {
+    width: 58px;
+    height: 58px;
+    border-radius: 16px;
+  }
+
+  .identidad h1 {
+    font-size: 26px;
+  }
+
+  .modulo-principal {
+    padding: 23px 16px 16px;
+  }
+
+  .modulo-principal h2 {
+    font-size: 20px;
+  }
+
+  .boton-registro {
+    min-height: 50px;
+  }
+}
+
+/* PANTALLAS BAJAS */
+
+@media (max-height: 650px) {
+
+  .pantalla-inicio {
+    align-items: flex-start;
+  }
+
+  .inicio-contenedor {
+    gap: 18px;
+  }
+
+  .modulo-principal {
+    padding-top: 20px;
+  }
+
+  .modulo-principal p {
+    margin-bottom: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boton-registro {
+    transition: none;
+  }
 }

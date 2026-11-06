@@ -1,12 +1,28 @@
+
 import { Component } from '@angular/core';
-import { IonHeader, IonToolbar, IonTitle, IonContent } from '@ionic/angular';
+import { RouterLink } from '@angular/router';
+import { IonContent, IonIcon } from '@ionic/angular';
+import { addIcons } from 'ionicons';
+import { arrowForwardOutline, clipboardOutline } from 'ionicons/icons';
 
 @Component({
   selector: 'app-home',
-  templateUrl: 'home.page.html',
-  styleUrls: ['home.page.scss'],
-  imports: [IonHeader, IonToolbar, IonTitle, IonContent],
+  standalone: true,
+  imports: [
+    RouterLink,
+    IonContent,
+    IonIcon
+  ],
+  templateUrl: './home.page.html',
+  styleUrls: ['./home.page.scss']
 })
 export class HomePage {
-  constructor() {}
+
+  constructor() {
+    addIcons({
+      arrowForwardOutline,
+      clipboardOutline
+    });
+  }
+
 }
