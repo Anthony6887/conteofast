@@ -2,7 +2,13 @@
 
 import { IndicadorCobertura } from './indicador-cobertura';
 import { TarjetaLista } from './tarjeta-lista';
-import { LISTAS, numero } from '../../lib/electoral';
+import {
+  LISTAS,
+  numero,
+  votosDignidad,
+  porcentaje,
+  porcentajeTexto
+} from '../../lib/electoral';
 import type { DashboardDatos } from '../../lib/electoral';
 
 type Props = { datos: DashboardDatos };
@@ -19,8 +25,18 @@ function Caja({ titulo, valor, nota }: { titulo: string; valor: string; nota?: s
 
 /** Pantalla separada del gráfico principal: estadísticas y tarjetas existentes. */
 export default function ResumenElectoral({ datos }: Props) {
-  const adicionales = datos.candidatos.filter(
-    candidato => candidato.numero_lista && !LISTAS.some(lista => lista.numero === candidato.numero_lista)
+  const avance = porcentaje(datos.juntas_confirmadas ?? 0, datos.juntas_total ?? 0);
+  const candidatos = Array.isArray(datos?.candidatos)
+    ? datos.candidatos
+    : [];
+
+  const adicionales = candidatos.filter(
+    candidato =>
+      candidato.numero_lista &&
+      !LISTAS.some(
+        lista =>
+          String(lista.numero) === String(candidato.numero_lista)
+      )
   ).length;
 
   return (
@@ -32,9 +48,9 @@ export default function ResumenElectoral({ datos }: Props) {
       </header>
 
       <section className="ev-resumen-kpis" aria-label="Resumen de votos y juntas">
-        <Caja titulo="Votos · Alcalde" valor={numero(votosDignidad(datos.candidatos, 'ALCALDE'))} />
-        <Caja titulo="Votos · Concejales urbanos" valor={numero(votosDignidad(datos.candidatos, 'URBANO'))} />
-        <Caja titulo="Votos · Concejales rurales" valor={numero(votosDignidad(datos.candidatos, 'RURAL'))} />
+        <Caja titulo="Votos · Alcalde" valor={numero(votosDignidad(candidatos, 'ALCALDE'))} />
+        <Caja titulo="Votos · Concejales urbanos" valor={numero(votosDignidad(candidatos, 'URBANO'))} />
+        <Caja titulo="Votos · Concejales rurales" valor={numero(votosDignidad(candidatos, 'RURAL'))} />
         <Caja titulo="Juntas confirmadas" valor={`${numero(datos.juntas_confirmadas)} / ${numero(datos.juntas_total)}`} nota={`${porcentajeTexto(avance)} completado`} />
       </section>
 
@@ -49,7 +65,7 @@ export default function ResumenElectoral({ datos }: Props) {
         </div>
         <div className="listas-grid">
           {LISTAS.map(lista => (
-            <TarjetaLista key={lista.numero} lista={lista} candidatos={datos.candidatos} />
+            <TarjetaLista key={lista.numero} lista={lista} candidatos={candidatos} />
           ))}
         </div>
         {adicionales > 0 && (

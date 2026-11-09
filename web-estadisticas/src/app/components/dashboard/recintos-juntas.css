@@ -1,0 +1,477 @@
+/* ==============================================================
+   CONTEOFAST | RECINTOS Y JUNTAS
+   Estilo autónomo para recintos-juntas.tsx
+   Conserva los nombres de clases existentes (.rc-*)
+   ============================================================= */
+
+.rc-modulo {
+    --rc-azul: #173b70;
+    --rc-azul-medio: #285cab;
+    --rc-borde: #dce6f2;
+    --rc-texto: #1d3657;
+    --rc-secundario: #657a94;
+    --rc-verde: #16734a;
+    --rc-verde-fondo: #def6e8;
+    --rc-amarillo: #99640d;
+    --rc-amarillo-fondo: #fff3d9;
+    --rc-gris-fondo: #edf2f8;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 1480px;
+    min-width: 0;
+    margin-inline: auto;
+    padding: clamp(12px, 2vw, 24px);
+    color: var(--rc-texto);
+    font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.rc-modulo *,
+.rc-modulo *::before,
+.rc-modulo *::after {
+    box-sizing: border-box;
+}
+
+/* Encabezado compacto, centrado en el ancho del contenido */
+.rc-modulo .rc-encabezado {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+    padding: 20px 23px;
+    background: #fff;
+    border: 1px solid var(--rc-borde);
+    border-radius: 14px;
+    box-shadow: 0 3px 14px rgba(22, 53, 89, .035);
+}
+
+.rc-modulo .rc-encabezado>div {
+    min-width: 0;
+}
+
+.rc-modulo .rc-encabezado .ev-eyebrow {
+    display: block;
+    color: var(--rc-azul-medio);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .10em;
+    text-transform: uppercase;
+}
+
+.rc-modulo .rc-encabezado h1 {
+    margin: 5px 0 0;
+    font-size: clamp(19px, 2vw, 25px);
+    font-weight: 850;
+    letter-spacing: -.025em;
+    line-height: 1.2;
+    color: #173965;
+}
+
+.rc-modulo .rc-actualizar {
+    flex: 0 0 auto;
+    min-height: 37px;
+    padding: 8px 15px;
+    border: 1px solid #b8cee9;
+    border-radius: 8px;
+    background: #eef5ff;
+    color: #235399;
+    font-size: 12px;
+    font-weight: 750;
+    cursor: pointer;
+    transition: background-color .18s ease, border-color .18s ease;
+}
+
+.rc-modulo .rc-actualizar:hover {
+    background: #dfeefe;
+    border-color: #8fb7e3;
+}
+
+.rc-modulo .rc-actualizar:focus-visible,
+.rc-modulo .rc-buscar:focus-visible {
+    outline: 3px solid rgba(53, 111, 198, .25);
+    outline-offset: 2px;
+}
+
+/* Tres indicadores siempre con el mismo tamaño y alineación */
+.rc-modulo .rc-metricas {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.rc-modulo .rc-metricas>div {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    min-width: 0;
+    min-height: 83px;
+    padding: 15px 19px;
+    border: 1px solid var(--rc-borde);
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 2px 10px rgba(22, 53, 89, .035);
+}
+
+.rc-modulo .rc-metricas small {
+    font-size: 11px;
+    font-weight: 650;
+    color: var(--rc-secundario);
+}
+
+.rc-modulo .rc-metricas strong {
+    color: var(--rc-azul);
+    font-size: clamp(22px, 2.2vw, 29px);
+    font-weight: 850;
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+}
+
+.rc-modulo .rc-metricas>div:nth-child(2) strong {
+    color: var(--rc-verde);
+}
+
+.rc-modulo .rc-metricas>div:nth-child(3) strong {
+    color: #a56b14;
+}
+
+/* Buscador: ocupa el ancho disponible */
+.rc-modulo .rc-herramientas {
+    display: flex;
+    width: 100%;
+    margin: 0 0 16px;
+}
+
+.rc-modulo .rc-buscar {
+    width: min(100%, 460px);
+    height: 40px;
+    padding: 9px 13px;
+    border: 1px solid #cddbea;
+    border-radius: 9px;
+    outline: none;
+    background: #fff;
+    color: var(--rc-texto);
+    font-size: 12px;
+    transition: border-color .16s ease, box-shadow .16s ease;
+}
+
+.rc-modulo .rc-buscar::placeholder {
+    color: #8b9bb0;
+}
+
+.rc-modulo .rc-buscar:focus {
+    border-color: #6d9bd4;
+    box-shadow: 0 0 0 3px rgba(63, 126, 211, .12);
+}
+
+/* Distribución equilibrada de recintos: 2 en escritorio, 1 en móvil. */
+.rc-modulo .rc-grilla {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    width: 100%;
+    min-width: 0;
+    align-items: stretch;
+}
+
+.rc-modulo .rc-recinto {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 235px;
+    padding: 18px 19px 17px;
+    border: 1px solid var(--rc-borde);
+    border-radius: 13px;
+    background: #fff;
+    box-shadow: 0 3px 12px rgba(16, 40, 76, .04);
+    scroll-margin-top: 24px;
+    transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+.rc-modulo .rc-recinto:hover {
+    border-color: #abc7e7;
+    box-shadow: 0 8px 22px rgba(21, 50, 89, .08);
+    transform: translateY(-1px);
+}
+
+.rc-modulo .rc-recinto:target {
+    border-color: #4588d5;
+    box-shadow: 0 0 0 3px rgba(69, 136, 213, .18);
+}
+
+.rc-modulo .rc-recinto-cabecera {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 63px;
+    margin-bottom: 14px;
+}
+
+.rc-modulo .rc-recinto-cabecera>div {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.rc-modulo .rc-parroquia {
+    display: block;
+    margin-bottom: 5px;
+    color: #6b83a2;
+    font-size: 10px;
+    font-weight: 850;
+    line-height: 1.3;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.rc-modulo .rc-recinto-cabecera h2 {
+    margin: 0;
+    color: #153965;
+    font-size: clamp(12px, 1.15vw, 15px);
+    font-weight: 850;
+    line-height: 1.32;
+    overflow-wrap: anywhere;
+}
+
+.rc-modulo .rc-recinto-estado {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    min-width: 92px;
+    padding: 6px 8px;
+    border: 1px solid #f0d4a0;
+    border-radius: 7px;
+    background: #fff8e9;
+    color: #99640d;
+    font-size: 10px;
+    font-weight: 850;
+    white-space: nowrap;
+}
+
+.rc-modulo .rc-recinto-estado--ok {
+    border-color: #a9ddbd;
+    background: #e7f8ed;
+    color: var(--rc-verde);
+}
+
+/* Disposición tipo cine: línea curva de pantalla y juntas visibles. */
+.rc-modulo .rc-juntas {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    align-items: center;
+    gap: 8px;
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0 0 16px;
+    padding: 30px 3px 5px;
+    position: relative;
+}
+
+.rc-modulo .rc-juntas::before {
+    content: 'RECINTO ELECTORAL · JUNTAS';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 24px;
+    border-top: 2px solid #b7cce6;
+    border-radius: 50% 50% 0 0 / 80% 80% 0 0;
+    color: #7b95b6;
+    font-size: 9px;
+    font-weight: 850;
+    letter-spacing: .06em;
+    text-align: center;
+    padding-top: 8px;
+    pointer-events: none;
+}
+
+.rc-modulo .rc-junta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 51px;
+    width: 51px;
+    min-height: 49px;
+    gap: 2px;
+    padding: 6px 3px;
+    border: 1px solid #cdd8e7;
+    border-bottom: 3px solid #c5d0dd;
+    border-radius: 8px;
+    background: var(--rc-gris-fondo);
+    color: #456180;
+    line-height: 1.05;
+    cursor: default;
+    font-variant-numeric: tabular-nums;
+    transition: background-color .2s ease, border-color .2s ease, transform .2s ease;
+}
+
+.rc-modulo .rc-junta strong {
+    font-size: 13px;
+    font-weight: 850;
+}
+
+.rc-modulo .rc-junta small {
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.rc-modulo .rc-junta:hover {
+    transform: translateY(-2px);
+}
+
+/* Estados provenientes del backend, no simulados. */
+.rc-modulo .rc-junta--confirmado {
+    background: var(--rc-verde-fondo);
+    color: #12663e;
+    border-color: #8fd2a7;
+    border-bottom-color: #50aa78;
+}
+
+.rc-modulo .rc-junta--en_revision,
+.rc-modulo .rc-junta--borrador {
+    background: var(--rc-amarillo-fondo);
+    color: var(--rc-amarillo);
+    border-color: #edca85;
+    border-bottom-color: #d7ae60;
+}
+
+.rc-modulo .rc-junta--pendiente {
+    background: var(--rc-gris-fondo);
+    color: #476382;
+    border-color: #d2deeb;
+    border-bottom-color: #c4cdd9;
+}
+
+/* Barra de avance situada siempre al pie de cada tarjeta. */
+.rc-modulo .rc-progreso {
+    flex: 0 0 auto;
+    height: 7px;
+    margin-top: auto;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e6edf6;
+}
+
+.rc-modulo .rc-progreso>span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #26986a, #4fb586);
+    transition: width .55s ease;
+}
+
+.rc-modulo .rc-sin-resultados,
+.rc-modulo .ev-cargando,
+.rc-modulo .ev-error {
+    width: 100%;
+    margin-top: 12px;
+    padding: 18px;
+    border-radius: 10px;
+    font-size: 12px;
+    text-align: center;
+}
+
+.rc-modulo .rc-sin-resultados,
+.rc-modulo .ev-cargando {
+    border: 1px dashed var(--rc-borde);
+    background: #fff;
+    color: var(--rc-secundario);
+}
+
+.rc-modulo .ev-error {
+    border: 1px solid #f2c1c5;
+    background: #fff2f3;
+    color: #ab3540;
+}
+
+/* Responsivo: usa el ancho del panel y no el ancho total del monitor. */
+@media (min-width: 1800px) {
+    .rc-modulo .rc-grilla {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 1050px) {
+    .rc-modulo .rc-grilla {
+        grid-template-columns: 1fr;
+    }
+
+    .rc-modulo .rc-recinto {
+        min-height: 205px;
+    }
+}
+
+@media (max-width: 620px) {
+    .rc-modulo {
+        padding: 10px;
+    }
+
+    .rc-modulo .rc-encabezado {
+        flex-wrap: wrap;
+        align-items: flex-start;
+        padding: 16px;
+    }
+
+    .rc-modulo .rc-actualizar {
+        width: 100%;
+    }
+
+    .rc-modulo .rc-metricas {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 7px;
+    }
+
+    .rc-modulo .rc-metricas>div {
+        min-height: 74px;
+        padding: 10px;
+    }
+
+    .rc-modulo .rc-metricas strong {
+        font-size: 21px;
+    }
+
+    .rc-modulo .rc-metricas small {
+        font-size: 9px;
+    }
+
+    .rc-modulo .rc-buscar {
+        width: 100%;
+    }
+
+    .rc-modulo .rc-recinto {
+        padding: 14px;
+        min-height: 190px;
+    }
+
+    .rc-modulo .rc-recinto-cabecera {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .rc-modulo .rc-recinto-estado {
+        min-width: 0;
+    }
+
+    .rc-modulo .rc-juntas {
+        gap: 7px;
+    }
+
+    .rc-modulo .rc-junta {
+        flex-basis: 46px;
+        width: 46px;
+        min-height: 45px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .rc-modulo .rc-recinto,
+    .rc-modulo .rc-junta,
+    .rc-modulo .rc-progreso>span {
+        transition: none;
+    }
+}

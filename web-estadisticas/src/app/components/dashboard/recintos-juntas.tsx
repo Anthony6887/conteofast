@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DatosRecintos, RecintoEstado } from '../../lib/recintos-estado';
 import { numero } from '../../lib/electoral';
+import './recintos-juntas.css';
 
 type Filtro = 'pendientes' | 'todos' | 'completos';
 type Props = {
@@ -33,14 +34,12 @@ function RecintoCine({ recinto }: { recinto: RecintoEstado }) {
         <div>
           <span className="rc-parroquia">{recinto.parroquia || 'Parroquia no indicada'}</span>
           <h2>{recinto.nombre}</h2>
-          <p>{numero(recinto.confirmadas)} confirmadas · {numero(recinto.pendientes)} pendientes · {numero(recinto.total_juntas)} juntas</p>
         </div>
         <span className={`rc-recinto-estado ${completado ? 'rc-recinto-estado--ok' : ''}`}>
           {completado ? 'Completo' : `${porcentaje}% completado`}
         </span>
       </header>
 
-      <div className="rc-pista" aria-hidden="true">RECINTO ELECTORAL · DISTRIBUCIÓN DE JUNTAS</div>
       <div className="rc-juntas" role="list" aria-label={`Juntas del recinto ${recinto.nombre}`}>
         {recinto.juntas.map(junta => {
           const etiqueta = `${junta.numero} ${etiquetaTipo(junta.tipo)}`;
@@ -86,7 +85,15 @@ export default function RecintosJuntas({ datos, error, cargando, onActualizar }:
     const id = decodeURIComponent(window.location.hash.slice(1));
     const encontrado = datos.recintos.find(r => `recinto-${r.id}` === id);
     if (!encontrado) return;
-    if (encontrado.pendientes === 0) setFiltro('todos');
+    if (encontrado.pendientes !== 0) return;
+
+    const fotograma = window.requestAnimationFrame(() => {
+      setFiltro(actual =>
+        actual === 'pendientes' ? 'todos' : actual
+      );
+    });
+
+    return () => window.cancelAnimationFrame(fotograma);
   }, [datos]);
 
   useEffect(() => {
@@ -104,7 +111,6 @@ export default function RecintosJuntas({ datos, error, cargando, onActualizar }:
         <div>
           <span className="ev-eyebrow">CONTROL DE CAPTURA</span>
           <h1>Recintos y juntas</h1>
-          <p>Distribución visual tipo cine · se colorean con el estado confirmado en la base de datos.</p>
         </div>
         <button type="button" className="rc-actualizar" onClick={onActualizar}>Actualizar ahora</button>
       </header>
@@ -112,16 +118,10 @@ export default function RecintosJuntas({ datos, error, cargando, onActualizar }:
       {datos && <>
         <div className="rc-metricas">
           <div><small>Recintos</small><strong>{numero(datos.totales.recintos)}</strong></div>
-          <div><small>Recintos incompletos</small><strong>{numero(datos.totales.recintos_pendientes)}</strong></div>
           <div><small>Juntas confirmadas</small><strong>{numero(datos.totales.confirmadas)}</strong></div>
           <div><small>Juntas pendientes</small><strong>{numero(datos.totales.pendientes)}</strong></div>
         </div>
         <div className="rc-herramientas">
-          <div className="rc-filtros" role="group" aria-label="Filtrar recintos">
-            <button type="button" className={filtro === 'pendientes' ? 'rc-filtro rc-filtro--activo' : 'rc-filtro'} onClick={() => setFiltro('pendientes')}>Pendientes</button>
-            <button type="button" className={filtro === 'todos' ? 'rc-filtro rc-filtro--activo' : 'rc-filtro'} onClick={() => setFiltro('todos')}>Todos</button>
-            <button type="button" className={filtro === 'completos' ? 'rc-filtro rc-filtro--activo' : 'rc-filtro'} onClick={() => setFiltro('completos')}>Completados</button>
-          </div>
           <input
             className="rc-buscar"
             type="search"
@@ -131,11 +131,7 @@ export default function RecintosJuntas({ datos, error, cargando, onActualizar }:
             onChange={e => setBuscar(e.target.value)}
           />
         </div>
-        <div className="rc-leyenda" aria-label="Significado de los colores">
-          <span><i className="rc-leyenda-color rc-leyenda-color--ok" /> Confirmada</span>
-          <span><i className="rc-leyenda-color rc-leyenda-color--revision" /> Registro sin confirmar</span>
-          <span><i className="rc-leyenda-color rc-leyenda-color--pendiente" /> Sin registro</span>
-        </div>
+
       </>}
 
       {error && <p className="ev-error" role="alert">{error} {datos && 'Se muestran los últimos datos obtenidos.'}</p>}
@@ -147,7 +143,6 @@ export default function RecintosJuntas({ datos, error, cargando, onActualizar }:
           ? <div className="rc-grilla">{visibles.map(recinto => <RecintoCine recinto={recinto} key={recinto.id} />)}</div>
           : <p className="rc-sin-resultados">No hay recintos que coincidan con el filtro seleccionado.</p>
       )}
-      <p className="rc-aclaracion">Una junta se considera completada únicamente cuando su registro tiene estado CONFIRMADO. Los datos son de seguimiento interno y no corresponden a resultados oficiales del CNE.</p>
     </section>
   );
 }

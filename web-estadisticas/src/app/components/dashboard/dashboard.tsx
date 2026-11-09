@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { BASE_PATH } from '../../lib/electoral';
-import type { ApiDashboard, DashboardDatos, Dignidad } from '../../lib/electoral';
+import type { DashboardDatos, Dignidad } from '../../lib/electoral';
+import { normalizarDashboard } from '../../lib/dashboard-normalizar';
 import type { DatosRecintos, RespuestaRecintos } from '../../lib/recintos-estado';
 import VisualizacionVotos from './visualizacion-votos';
 import ResumenElectoral from './resumen-electoral';
@@ -48,10 +49,12 @@ export default function Dashboard({ vista = 'vivo' }: { vista?: Vista }) {
     let ocupadaDashboard = false;
     let ocupadaRecintos = false;
     let siguienteIntentoRecintos = 0;
+    let siguienteIntentoDashboard = 0;
+    let ultimaConsultaRecintos = 0;
     const controladores = new Set<AbortController>();
 
-    async function obtenerDashboard() {
-      if (!activo || ocupadaDashboard) return;
+    async function obtenerDashboard(forzar = false) {
+      if (!activo || ocupadaDashboard || (!forzar && Date.now() < siguienteIntentoDashboard)) return;
       ocupadaDashboard = true;
       const controlador = new AbortController();
       controladores.add(controlador);
@@ -62,16 +65,21 @@ export default function Dashboard({ vista = 'vivo' }: { vista?: Vista }) {
           headers: { Accept: 'application/json', 'Cache-Control': 'no-cache' },
           signal: controlador.signal
         });
-        const json = (await respuesta.json().catch(() => null)) as ApiDashboard | null;
-        if (!respuesta.ok || !json?.ok || !json.data) {
-          throw new Error(json?.message || `Error HTTP ${respuesta.status} al consultar votos.`);
+        const json: unknown = await respuesta.json().catch(() => null);
+        if (!respuesta.ok) {
+          const mensaje = json && typeof json === 'object' && 'message' in json
+            ? String(json.message) : `Error HTTP ${respuesta.status} al consultar votos.`;
+          throw new Error(mensaje);
         }
+        const datosNormalizados = normalizarDashboard(json);
+        siguienteIntentoDashboard = 0;
         if (activo) {
-          setDatos(json.data);
+          setDatos(datosNormalizados);
           setUltimaConsulta(new Date());
           setError('');
         }
       } catch (e) {
+        siguienteIntentoDashboard = Date.now() + 5000;
         if (activo) setError(e instanceof Error ? e.message : 'No hay conexión con la API electoral.');
       } finally {
         window.clearTimeout(tiempo);
@@ -102,9 +110,10 @@ export default function Dashboard({ vista = 'vivo' }: { vista?: Vista }) {
           setErrorRecintos('');
         }
         siguienteIntentoRecintos = 0;
+        ultimaConsultaRecintos = Date.now();
       } catch (e) {
         // Retraso después del error para evitar repetir 404/503 cada segundo.
-        siguienteIntentoRecintos = Date.now() + 5000;
+        siguienteIntentoRecintos = Date.now() + 15000;
         if (activo) setErrorRecintos(e instanceof Error ? e.message : 'Error consultando recintos.');
       } finally {
         window.clearTimeout(tiempo);
@@ -115,7 +124,7 @@ export default function Dashboard({ vista = 'vivo' }: { vista?: Vista }) {
     }
 
     refrescarRef.current = () => {
-      void obtenerDashboard();
+      void obtenerDashboard(true);
       void obtenerRecintos(true);
     };
     const iniciar = window.setTimeout(() => {
@@ -125,7 +134,11 @@ export default function Dashboard({ vista = 'vivo' }: { vista?: Vista }) {
     const intervalo = window.setInterval(() => {
       if (!document.hidden) {
         void obtenerDashboard();
-        void obtenerRecintos();
+        // Solo el módulo de recintos consulta cada segundo; en otros módulos
+        // un estado resumido cada 10 s evita cientos de consultas innecesarias.
+        if (vista === 'recintos' || Date.now() - ultimaConsultaRecintos >= 10000) {
+          void obtenerRecintos();
+        }
       }
     }, REFRESCO_MS);
     const alVolver = () => {
@@ -143,7 +156,7 @@ export default function Dashboard({ vista = 'vivo' }: { vista?: Vista }) {
       controladores.forEach(c => c.abort());
       refrescarRef.current = () => {};
     };
-  }, []);
+  }, [vista]);
 
   useEffect(() => {
     const cerrar = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuAbierto(false); };
@@ -193,25 +206,6 @@ export default function Dashboard({ vista = 'vivo' }: { vista?: Vista }) {
           </Link>
         </nav>
         <div className="ev-pendientes-lateral">
-          <div className="ev-pendientes-titulo">
-            <strong>Recintos incompletos</strong>
-            <span>{recintos ? pendientes.length : '—'}</span>
-          </div>
-          {recintos ? (
-            <div className="ev-pendientes-listado">
-              {pendientes.length === 0 && <p>Todos los recintos están completos.</p>}
-              {pendientes.map(recinto => (
-                <Link key={recinto.id} href={`/recintos#recinto-${recinto.id}`}
-                  onClick={() => setMenuAbierto(false)} title={recinto.nombre}>
-                  <span>{recinto.nombre}</span>
-                  <b>{recinto.pendientes}/{recinto.total_juntas}</b>
-                </Link>
-              ))}
-            </div>
-          ) : <p className="ev-pendientes-ayuda">{cargandoRecintos ? 'Consultando recintos...' : errorRecintos || 'Sin datos'}</p>}
-          <button type="button" className="ev-lateral-actualizar" onClick={actualizar}>
-            <Icono nombre="actualizar" /> Actualizar datos
-          </button>
         </div>
         <div className="ev-sidebar-pie">
           <span className={`ev-luz ${conectado ? 'ev-luz--ok' : error ? 'ev-luz--error' : ''}`} />
@@ -232,7 +226,7 @@ export default function Dashboard({ vista = 'vivo' }: { vista?: Vista }) {
               ? <VisualizacionVotos candidatos={datos.candidatos} dignidad={dignidad} onCambiarDignidad={setDignidad} />
               : <ResumenElectoral datos={datos} />)}
           {vista !== 'vivo' && <footer className="ev-footer-pie">
-            MAGG · Elección {datos?.eleccion_id ?? recintos?.eleccion_id ?? '—'} · Consulta periódica cada 1 s · Resultados no oficiales
+            MAGG · Elecciones 2026
           </footer>}
         </main>
       </div>

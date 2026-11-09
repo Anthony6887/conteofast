@@ -43,10 +43,9 @@ export default function VisualizacionVotos({ candidatos, dignidad, onCambiarDign
   return (
     <section className="ev-panel" aria-label="Visualización de votos registrados en tiempo real">
       <div className="ev-panel-topo">
-        <div>
+        <div>   
           <span className="ev-eyebrow">CONTEO ELECTORAL</span>
           <h1>Votos en tiempo real</h1>
-          <p>La altura de cada barra representa los votos registrados. Datos no oficiales.</p>
         </div>
         <div className="ev-total-votos">
           <span>Votos de las listas mostradas</span>
@@ -106,7 +105,6 @@ export default function VisualizacionVotos({ candidatos, dignidad, onCambiarDign
         })}
       </div>
 
-      <p className="ev-nota">La escala se ajusta al candidato con mayor votación de esta dignidad; las cifras provienen de la API ConteoFast.</p>
     </section>
   );
 }
