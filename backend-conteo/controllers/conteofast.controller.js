@@ -1,15 +1,12 @@
 'use strict';
-
 const { QueryTypes } = require('sequelize');
 const { sequelize } = require('../models');
-
 class HttpError extends Error {
   constructor(status, message) {
     super(message);
     this.status = status;
   }
 }
-
 function eleccionId() {
   const id = Number(process.env.CF_ELECCION_ID || 1);
   if (!Number.isSafeInteger(id) || id <= 0) {
@@ -17,12 +14,10 @@ function eleccionId() {
   }
   return id;
 }
-
 function idPositivo(valor) {
   const numero = Number(valor);
   return Number.isSafeInteger(numero) && numero > 0 ? numero : null;
 }
-
 function responderError(res, error, origen) {
   if (error instanceof HttpError) {
     return res.status(error.status).json({ ok: false, message: error.message });
@@ -36,7 +31,6 @@ function responderError(res, error, origen) {
   console.error(`[CONTEOFAST ${origen}]`, error);
   return res.status(500).json({ ok: false, message: 'Error interno del servidor.' });
 }
-
 async function catalogos(_req, res) {
   try {
     const eleccionIdActual = eleccionId();
@@ -59,7 +53,6 @@ async function catalogos(_req, res) {
          ORDER BY FIELD(tipo, 'ALCALDE', 'CONCEJAL'), id
       `, { type: QueryTypes.SELECT, replacements: { eleccionId: eleccionIdActual } })
     ]);
-
     return res.json({
       ok: true,
       data: { eleccion_id: eleccionIdActual, juntas, candidatos }
@@ -68,13 +61,11 @@ async function catalogos(_req, res) {
     return responderError(res, error, 'catalogos');
   }
 }
-
 async function registroPorJunta(req, res) {
   try {
     const juntaId = idPositivo(req.params.juntaId);
     if (!juntaId) throw new HttpError(400, 'El ID de la junta no es valido.');
     const eleccionIdActual = eleccionId();
-
     const registros = await sequelize.query(`
       SELECT id, junta_id, eleccion_id, estado, observaciones,
              fecha_registro, fecha_actualizacion
@@ -85,11 +76,9 @@ async function registroPorJunta(req, res) {
       type: QueryTypes.SELECT,
       replacements: { juntaId, eleccionId: eleccionIdActual }
     });
-
     if (!registros.length) {
       return res.json({ ok: true, data: null });
     }
-
     const registro = registros[0];
     const votos = await sequelize.query(`
       SELECT v.candidato_id, v.votos, c.nombre, c.tipo
@@ -101,20 +90,17 @@ async function registroPorJunta(req, res) {
       type: QueryTypes.SELECT,
       replacements: { registroId: registro.id }
     });
-
     return res.json({ ok: true, data: { ...registro, votos } });
   } catch (error) {
     return responderError(res, error, 'registroPorJunta');
   }
 }
-
 function validarDetalle(body) {
   const juntaId = idPositivo(body?.junta_id);
   const filas = body?.votos;
   if (!juntaId || !Array.isArray(filas) || filas.length < 1 || filas.length > 100) {
     throw new HttpError(400, 'Envie junta_id y votos: [{ candidato_id, votos }].');
   }
-
   const detalle = new Map();
   for (const fila of filas) {
     const candidatoId = idPositivo(fila?.candidato_id);
@@ -130,16 +116,13 @@ function validarDetalle(body) {
   }
   return { juntaId, detalle };
 }
-
 async function persistir(req, res, requiereExistente) {
   try {
     const { juntaId, detalle } = validarDetalle(req.body);
     const eleccionIdActual = eleccionId();
-
     if (requiereExistente && idPositivo(req.params.juntaId) !== juntaId) {
       throw new HttpError(400, 'El ID de la ruta y del cuerpo deben coincidir.');
     }
-
     const resultado = await sequelize.transaction(async transaction => {
       const seleccionar = { transaction, type: QueryTypes.SELECT };
       const juntas = await sequelize.query(`
@@ -157,7 +140,6 @@ async function persistir(req, res, requiereExistente) {
         Number(junta.numeracion_verificada) !== 1) {
         throw new HttpError(409, 'La numeracion de esta junta no esta verificada.');
       }
-
       const candidatos = await sequelize.query(`
         SELECT id FROM cf_candidatos
          WHERE eleccion_id = :eleccionId AND activo = 1
@@ -179,7 +161,6 @@ async function persistir(req, res, requiereExistente) {
           }
         }
       }
-
       const previos = await sequelize.query(`
         SELECT id FROM cf_registros
          WHERE eleccion_id = :eleccionId AND junta_id = :juntaId
@@ -188,7 +169,6 @@ async function persistir(req, res, requiereExistente) {
         ...seleccionar,
         replacements: { eleccionId: eleccionIdActual, juntaId }
       });
-
       let registroId;
       let creado;
       if (previos.length) {
@@ -219,7 +199,6 @@ async function persistir(req, res, requiereExistente) {
         registroId = Number(ids[0].id);
         creado = true;
       }
-
       for (const [candidatoId, cantidad] of detalle.entries()) {
         await sequelize.query(`
           INSERT INTO cf_registro_votos (registro_id, candidato_id, votos)
@@ -236,7 +215,6 @@ async function persistir(req, res, requiereExistente) {
         creado
       };
     });
-
     return res.status(resultado.creado ? 201 : 200).json({
       ok: true,
       message: resultado.creado ? 'Registro creado.' : 'Registro actualizado.',
@@ -246,21 +224,17 @@ async function persistir(req, res, requiereExistente) {
     return responderError(res, error, requiereExistente ? 'actualizar' : 'guardar');
   }
 }
-
 async function guardar(req, res) {
   return persistir(req, res, false);
 }
-
 async function actualizar(req, res) {
   return persistir(req, res, true);
 }
-
 async function eliminar(req, res) {
   try {
     const juntaId = idPositivo(req.params.juntaId);
     if (!juntaId) throw new HttpError(400, 'El ID de junta no es valido.');
     const eleccionIdActual = eleccionId();
-
     const resultado = await sequelize.transaction(async transaction => {
       const registros = await sequelize.query(`
         SELECT id FROM cf_registros
@@ -281,13 +255,11 @@ async function eliminar(req, res) {
       `, { transaction, replacements: { registroId } });
       return { registro_id: registroId, junta_id: juntaId };
     });
-
     return res.json({ ok: true, message: 'Registro eliminado.', data: resultado });
   } catch (error) {
     return responderError(res, error, 'eliminar');
   }
 }
-
 async function resumen(_req, res) {
   try {
     const eleccionIdActual = eleccionId();
@@ -322,11 +294,122 @@ async function resumen(_req, res) {
   }
 }
 
+/**
+ * GET /api/conteofast/recintos-estado
+ * Consulta el estado de cada junta por recinto para la elección configurada.
+ * Solo lectura: no altera cf_registros ni los votos.
+ * CONFIRMADO: registro guardado, EN_REVISION: registro existente en otro estado,
+ * PENDIENTE: sin registro para esta elección.
+ */
+async function recintosEstado(_req, res) {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  try {
+    const eleccionIdActual = eleccionId();
+
+    // Mismas juntas y recintos activos que GET /catalogos.
+    // LEFT JOIN mantiene visibles las juntas que todavía no tienen registro.
+    const filas = await sequelize.query(`
+      SELECT r.id AS recinto_id,
+             r.nombre AS recinto_nombre,
+             r.parroquia,
+             r.direccion,
+             j.id AS junta_id,
+             j.numero AS junta_numero,
+             j.tipo AS junta_tipo,
+             j.padron,
+             cr.estado AS registro_estado,
+             cr.fecha_actualizacion AS actualizado_en
+        FROM juntas j
+        INNER JOIN recintos r ON r.id = j.recinto_id
+        LEFT JOIN cf_registros cr
+          ON cr.junta_id = j.id
+         AND cr.eleccion_id = :eleccionId
+       WHERE j.activo = 1 AND r.activo = 1
+       ORDER BY r.parroquia, r.nombre,
+                CAST(j.numero AS UNSIGNED), j.tipo, j.id
+    `, {
+      type: QueryTypes.SELECT,
+      replacements: { eleccionId: eleccionIdActual }
+    });
+
+    const mapa = new Map();
+    for (const fila of filas) {
+      const recintoId = String(fila.recinto_id);
+      if (!mapa.has(recintoId)) {
+        mapa.set(recintoId, {
+          id: recintoId,
+          nombre: String(fila.recinto_nombre || ''),
+          parroquia: String(fila.parroquia || ''),
+          direccion: String(fila.direccion || ''),
+          total_juntas: 0,
+          confirmadas: 0,
+          en_revision: 0,
+          pendientes: 0,
+          juntas: []
+        });
+      }
+
+      const recinto = mapa.get(recintoId);
+      const registroEstado = String(fila.registro_estado || '').trim().toUpperCase();
+      const estado = registroEstado === 'CONFIRMADO'
+        ? 'CONFIRMADO'
+        : registroEstado ? 'EN_REVISION' : 'PENDIENTE';
+
+      recinto.juntas.push({
+        id: String(fila.junta_id),
+        numero: String(fila.junta_numero ?? ''),
+        tipo: String(fila.junta_tipo || ''),
+        padron: fila.padron == null ? null : Number(fila.padron),
+        estado,
+        actualizado_en: fila.actualizado_en || null
+      });
+
+      recinto.total_juntas += 1;
+      if (estado === 'CONFIRMADO') {
+        recinto.confirmadas += 1;
+      } else {
+        recinto.pendientes += 1;
+        if (estado === 'EN_REVISION') recinto.en_revision += 1;
+      }
+    }
+
+    const recintos = Array.from(mapa.values());
+    const totales = recintos.reduce((total, recinto) => {
+      total.juntas += recinto.total_juntas;
+      total.confirmadas += recinto.confirmadas;
+      total.en_revision += recinto.en_revision;
+      total.pendientes += recinto.pendientes;
+      if (recinto.pendientes > 0) total.recintos_pendientes += 1;
+      return total;
+    }, {
+      recintos: recintos.length,
+      recintos_pendientes: 0,
+      juntas: 0,
+      confirmadas: 0,
+      en_revision: 0,
+      pendientes: 0
+    });
+
+    return res.json({
+      ok: true,
+      data: {
+        eleccion_id: eleccionIdActual,
+        consultado_en: new Date().toISOString(),
+        totales,
+        recintos
+      }
+    });
+  } catch (error) {
+    return responderError(res, error, 'recintosEstado');
+  }
+}
+
 module.exports = {
   catalogos,
   registroPorJunta,
   guardar,
   actualizar,
   eliminar,
-  resumen
+  resumen,
+  recintosEstado
 };

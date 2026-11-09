@@ -3,7 +3,11 @@ import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { IonContent, IonIcon } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { arrowForwardOutline, clipboardOutline } from 'ionicons/icons';
+import {
+  arrowForwardOutline,
+  checkmarkOutline,
+  clipboardOutline
+} from 'ionicons/icons';
 
 @Component({
   selector: 'app-home',
@@ -21,6 +25,7 @@ export class HomePage {
   constructor() {
     addIcons({
       arrowForwardOutline,
+      checkmarkOutline,
       clipboardOutline
     });
   }

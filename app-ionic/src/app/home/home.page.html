@@ -7,26 +7,82 @@
       <!-- IDENTIDAD -->
       <section class="identidad">
 
-        <h1>CONTROL ELECTORAL</h1>
+        <h1>
+          CONTROL
+          <span>ELECTORAL</span>
+        </h1>
+
+        <p>
+          Registro de votos por junta electoral
+        </p>
 
       </section>
+
+      <!-- FIGURAS GEOMETRICAS -->
+      <div class="escena-geometrica" aria-hidden="true">
+
+        <div class="circulo-fondo"></div>
+        <div class="circulo-anillo"></div>
+
+        <div class="figura figura-circulo"></div>
+        <div class="figura figura-rombo"></div>
+        <div class="figura figura-triangulo"></div>
+        <div class="figura figura-cuadrado"></div>
+
+        <!-- URNA ELECTORAL -->
+        <div class="urna">
+
+          <div class="papeleta">
+            <ion-icon name="checkmark-outline">
+            </ion-icon>
+          </div>
+
+          <div class="urna-tapa">
+            <div class="urna-ranura"></div>
+          </div>
+
+          <div class="urna-cuerpo">
+
+            <div class="grafico-barras">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
 
       <!-- MODULO PRINCIPAL -->
       <section class="modulo-principal">
 
-        <a routerLink="/registro" class="boton-registro" aria-label="Ingresar al formulario de registro de votos">
+        <a routerLink="/registro" class="boton-registro" aria-label="Ingresar al registro de votos">
 
           <span>Ingresar registro</span>
 
-          <ion-icon name="arrow-forward-outline"></ion-icon>
+          <ion-icon name="arrow-forward-outline">
+          </ion-icon>
 
         </a>
 
       </section>
 
+      <!-- COLORES DISTINTIVOS -->
+      <div class="colores-listas" aria-hidden="true">
+
+        <span class="color-morado"></span>
+        <span class="color-celeste"></span>
+        <span class="color-verde"></span>
+        <span class="color-naranja"></span>
+
+      </div>
+
       <!-- PIE -->
       <footer class="pie-app">
-        Conteofast 1.0
+        <strong>MAGG</strong>
+        <span>Versión 1.0</span>
       </footer>
 
     </div>

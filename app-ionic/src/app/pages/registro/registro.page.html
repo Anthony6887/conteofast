@@ -18,7 +18,7 @@
     <section class="tarjeta seleccion" aria-label="Selección de junta">
 
       <label class="paso" for="recinto">
-         Recinto electoral
+        Recinto electoral
       </label>
 
       <select id="recinto" name="recinto" [ngModel]="recintoId" (ngModelChange)="seleccionarRecinto($event)"
@@ -143,22 +143,22 @@
 
     </section>
     }
-
+    
     <!-- SUMATORIA DE VOTOS -->
     <section class="tarjeta totales" aria-label="Totales de la junta">
 
       <div>
-        <span>Alcalde</span>
+        <span>Total Alcaldes</span>
         <strong>{{ totalAlcalde }}</strong>
       </div>
 
       <div>
-        <span>Urbano</span>
+        <span> Total Urbanos</span>
         <strong>{{ totalUrbanos }}</strong>
       </div>
 
       <div>
-        <span>Rural</span>
+        <span>Total Rurales</span>
         <strong>{{ totalRurales }}</strong>
       </div>
 
@@ -222,9 +222,10 @@
     }
     }
 
-    <p class="nota">
-      Registro interno · Resultados no oficiales
-    </p>
+    <footer class="pie-app">
+      <strong>MAGG</strong>
+      <span>Versión 1.0</span>
+    </footer>
 
   </main>
 </ion-content>

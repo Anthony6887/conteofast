@@ -1,3 +1,4 @@
+
 'use strict';
 
 const express = require('express');
@@ -7,10 +8,11 @@ const router = express.Router();
 
 router.get('/catalogos', controller.catalogos);
 router.get('/resumen', controller.resumen);
+router.get('/recintos-estado', controller.recintosEstado);
+
 router.get('/registro/:juntaId', controller.registroPorJunta);
 router.post('/registro', controller.guardar);
 router.put('/registro/:juntaId', controller.actualizar);
 router.delete('/registro/:juntaId', controller.eliminar);
 
 module.exports = router;
-
