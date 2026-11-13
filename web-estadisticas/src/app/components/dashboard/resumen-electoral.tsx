@@ -7,7 +7,6 @@ import {
   numero,
   votosDignidad,
   porcentaje,
-  porcentajeTexto
 } from '../../lib/electoral';
 import type { DashboardDatos } from '../../lib/electoral';
 
@@ -51,7 +50,6 @@ export default function ResumenElectoral({ datos }: Props) {
         <Caja titulo="Votos · Alcalde" valor={numero(votosDignidad(candidatos, 'ALCALDE'))} />
         <Caja titulo="Votos · Concejales urbanos" valor={numero(votosDignidad(candidatos, 'URBANO'))} />
         <Caja titulo="Votos · Concejales rurales" valor={numero(votosDignidad(candidatos, 'RURAL'))} />
-        <Caja titulo="Juntas confirmadas" valor={`${numero(datos.juntas_confirmadas)} / ${numero(datos.juntas_total)}`} nota={`${porcentajeTexto(avance)} completado`} />
       </section>
 
       <div className="ev-resumen-cobertura">

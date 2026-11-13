@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import {
   BASE_PATH, DIGNIDADES, LISTAS, numero, obtenerCandidato,
-  porcentaje, porcentajeTexto,
+  porcentaje,
 } from '../../lib/electoral';
 import type { CandidatoResultado, Dignidad } from '../../lib/electoral';
 
@@ -79,11 +79,11 @@ export function GraficoRanking({ candidatos, candidatosAnteriores, dignidad, onD
               </div>
               <div className="ranking-valor">
                 <strong>{fila.candidato ? numero(fila.votos) : '—'}</strong>
-                <span>{fila.candidato ? porcentajeTexto(porcentaje(fila.votos, totalVisible)) : 'Sin dato'}</span>
                 {fila.candidato && fila.diferencia !== null && fila.diferencia !== 0 && (
                   <em className={fila.diferencia > 0 ? 'rt-variacion rt-variacion--sube' : 'rt-variacion rt-variacion--baja'}>
                     {fila.diferencia > 0 ? '+' : '−'}{numero(Math.abs(fila.diferencia))}
                   </em>
+
                 )}
               </div>
             </div>

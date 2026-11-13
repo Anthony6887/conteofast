@@ -1,4 +1,4 @@
-import { numero, porcentaje, porcentajeTexto } from '../../lib/electoral';
+import { numero, porcentaje } from '../../lib/electoral';
 
 interface Props {
   registradas: number;
@@ -24,12 +24,6 @@ export function IndicadorCobertura({ registradas, total, recintos, parroquias }:
         </div>
       </div>
       <div className="cobertura-cuerpo">
-        <div className="anillo" style={estilo} role="img" aria-label={`${porcentajeTexto(completado)} de juntas registradas`}>
-          <div className="anillo-centro">
-            <strong>{porcentajeTexto(completado)}</strong>
-            <span>registradas</span>
-          </div>
-        </div>
         <div className="cobertura-datos">
           <div><span className="leyenda-punto registrado" /> <span>Registradas</span> <strong>{numero(registradas)}</strong></div>
           <div><span className="leyenda-punto pendiente" /> <span>Pendientes</span> <strong>{numero(pendientes)}</strong></div>

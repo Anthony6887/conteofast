@@ -1,0 +1,285 @@
+/* ConteoFast / MAGG: gráfico vertical comparativo por listas.
+   Clases tc-vb- aisladas del resto de la aplicación.
+   Se diseñó para convivir con dashboard-simple.css sin reemplazarlo. */
+
+.tc-vertical-panel,
+.tc-vertical-panel * { box-sizing: border-box; }
+
+/* Este selector tiene prioridad frente a .ev-layout--vivo .ev-panel. */
+.ev-layout--vivo .ev-panel.tc-vertical-panel,
+.ev-panel.tc-vertical-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(1540px, 100%);
+  max-width: 100%;
+  min-width: 0;
+  height: calc(100dvh - clamp(22px, 4vw, 56px));
+  min-height: 500px;
+  margin: 0 auto;
+  padding: clamp(15px, 1.6vw, 25px);
+  border: 1px solid #dfe7f3;
+  border-radius: 15px;
+  background: white;
+  box-shadow: 0 6px 26px rgba(17, 48, 80, .055);
+  overflow: hidden;
+}
+
+.tc-vb-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+.tc-vb-kicker {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: #2964ad;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .08em;
+}
+.tc-vb-kicker i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #19a675;
+  box-shadow: 0 0 0 3px #d8f4e6;
+}
+.tc-vb-header h1 {
+  margin: 6px 0 0;
+  color: #173557;
+  font-size: clamp(22px, 2.05vw, 30px);
+  line-height: 1.15;
+  letter-spacing: -.035em;
+  font-weight: 850;
+}
+.tc-vb-total {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  min-width: 135px;
+  padding: 9px 13px;
+  border: 1px solid #d9e7f8;
+  border-radius: 10px;
+  background: #f3f8ff;
+  font-variant-numeric: tabular-nums;
+}
+.tc-vb-total small {
+  color: #607b9a;
+  font-size: 10px;
+  font-weight: 700;
+}
+.tc-vb-total strong {
+  color: #17457f;
+  font-size: clamp(19px, 1.9vw, 27px);
+  line-height: 1;
+}
+.tc-vb-filtros {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 12px 0;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #e9eef5;
+}
+.tc-vb-filtro {
+  padding: 8px 13px;
+  border: 1px solid #d1dfef;
+  border-radius: 8px;
+  background: white;
+  color: #465f7f;
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: color .16s, background .16s, border-color .16s;
+}
+.tc-vb-filtro:hover { background: #edf5ff; }
+.tc-vb-filtro--activo,
+.tc-vb-filtro--activo:hover {
+  background: #205ca5;
+  color: white;
+  border-color: #205ca5;
+}
+.tc-vb-filtro:focus-visible {
+  outline: 3px solid #8abaf9;
+  outline-offset: 2px;
+}
+
+/* Las nueve listas caben en una sola fila a pantalla completa.
+   En pantallas pequeñas se desplazan horizontalmente, manteniendo escala. */
+.tc-vb-desplazamiento {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-color: #b7c9e1 transparent;
+  scrollbar-width: thin;
+}
+.tc-vb-grid {
+  --tc-columnas: 9;
+  display: grid;
+  grid-template-columns: repeat(var(--tc-columnas), minmax(0, 1fr));
+  gap: clamp(6px, .75vw, 13px);
+  width: 100%;
+  min-width: max(100%, calc(var(--tc-columnas) * 126px));
+  height: 100%;
+  min-height: 0;
+  align-items: stretch;
+}
+.tc-vb-columna {
+  --tc-color: #2863a9;
+  --tc-alto: 0%;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+}
+.tc-vb-escala {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 210px;
+  border-bottom: 2px solid #afbed1;
+  background-image: repeating-linear-gradient(to top,
+    transparent 0, transparent calc(25% - 1px),
+    #edf1f6 calc(25% - 1px), #edf1f6 25%);
+}
+.tc-vb-barra {
+  position: absolute;
+  z-index: 1;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(75%, 104px);
+  height: var(--tc-alto);
+  border-radius: 8px 8px 0 0;
+  background: var(--tc-color);
+  box-shadow: inset 0 -12px 26px rgba(0,0,0,.09);
+  transition: height .55s ease;
+}
+.tc-vb-marcador {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: calc(var(--tc-alto) + 7px);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  width: min(100%, 124px);
+  transition: bottom .55s ease;
+}
+.tc-vb-cantidad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 68px;
+  max-width: 100%;
+  padding: 5px 9px;
+  border: 1px solid #dfe8f3;
+  border-radius: 9px;
+  background: white;
+  box-shadow: 0 2px 10px rgba(22, 48, 81, .09);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.tc-vb-cantidad strong {
+  font-size: clamp(16px, 1.6vw, 23px);
+  font-weight: 900;
+  line-height: 1.1;
+  color: #183c6d;
+}
+.tc-vb-cantidad small {
+  font-size: 9px;
+  color: #8191a5;
+  line-height: 1.2;
+}
+.tc-vb-foto,
+.tc-vb-marcador .tc-foto-fallback {
+  width: clamp(50px, 4.5vw, 66px) !important;
+  height: clamp(50px, 4.5vw, 66px) !important;
+  border: 3px solid white;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 2px 12px rgba(17, 45, 76, .20);
+  background: #ecf2f9;
+  flex: none;
+}
+.tc-foto-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #426791;
+  font-weight: 800;
+  font-size: 15px;
+}
+.tc-vb-pie {
+  display: flex;
+  flex: 0 0 75px;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px 2px 0;
+  text-align: center;
+}
+.tc-vb-lista {
+  color: var(--tc-color);
+  font-size: clamp(11px, .9vw, 14px);
+  font-weight: 900;
+  white-space: nowrap;
+}
+.tc-vb-nombre {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  width: 100%;
+  color: #263e5d;
+  font-size: clamp(9px, .76vw, 11px);
+  line-height: 1.2;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+.tc-vb-cuota { color: #8597ab; font-size: 9px; line-height: 1.1; }
+.tc-vb-diferencia { font-weight: 800; font-size: 10px; }
+.tc-vb-diferencia--sube { color: #16855b; }
+.tc-vb-diferencia--baja { color: #ba6151; }
+.tc-vb-nota {
+  display: flex;
+  justify-content: space-between;
+  flex: 0 0 auto;
+  gap: 12px;
+  margin-top: 7px;
+  padding: 3px 2px 0;
+  color: #8192a8;
+  font-size: 10px;
+}
+.tc-vb-vacio {
+  flex: 1;
+  text-align: center;
+  color: #7186a3;
+  padding: 50px 15px;
+}
+
+@media (max-width: 780px) {
+  .ev-layout--vivo .ev-panel.tc-vertical-panel,
+  .ev-panel.tc-vertical-panel { min-height: 490px; }
+  .tc-vb-header h1 { font-size: 22px; }
+  .tc-vb-grid { min-width: max(100%, calc(var(--tc-columnas) * 132px)); }
+  .tc-vb-escala { min-height: 260px; }
+}
+@media (max-height: 680px) and (min-width: 781px) {
+  .ev-layout--vivo .ev-panel.tc-vertical-panel,
+  .ev-panel.tc-vertical-panel { min-height: 510px; height: auto; }
+  .tc-vb-escala { height: 330px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tc-vb-barra, .tc-vb-marcador { transition: none; }
+}

@@ -127,8 +127,6 @@ export function porcentaje(numerador: number, denominador: number): number {
   return Math.max(0, Math.min(100, (numerador / denominador) * 100));
 }
 
-export function porcentajeTexto(valor: number): string {
-  return `${new Intl.NumberFormat('es-EC', { maximumFractionDigits: 1 }).format(valor)}%`;
-}
+
 
 export const BASE_PATH = '/conteofast';
