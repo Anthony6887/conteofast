@@ -3,229 +3,266 @@
     <ion-buttons slot="start">
       <ion-back-button defaultHref="/home" text=""></ion-back-button>
     </ion-buttons>
-    <ion-title>Registro de votos</ion-title>
+    <ion-title>ConteoFast · Registro</ion-title>
   </ion-toolbar>
 </ion-header>
 
 <ion-content [fullscreen]="true" class="registro-content">
-  <main class="registro-container">
-
+  <main class="registro-container" [class.junta-finalizada]="registroFinalizado && consultado">
     @if (cargando) {
-    <p class="aviso" role="status">Cargando información...</p>
+      <p class="aviso" role="status">Cargando recintos y listas...</p>
     }
 
-    <!-- SELECCIÓN DE JUNTA -->
-    <section class="tarjeta seleccion" aria-label="Selección de junta">
-
-      <label class="paso" for="recinto">
-        Recinto electoral
-      </label>
-
-      <select id="recinto" name="recinto" [ngModel]="recintoId" (ngModelChange)="seleccionarRecinto($event)"
-        [disabled]="cargando || guardando">
-
+    <section class="tarjeta seleccion" aria-label="Seleccionar recinto y junta">
+      <div class="seccion-titulo">Recinto electoral</div>
+      <label for="codigo-recinto">Nombre del recinto</label>
+      <select id="codigo-recinto" name="codigo-recinto"
+        [ngModel]="codigoRecinto" (ngModelChange)="seleccionarRecinto($event)"
+        [disabled]="cargando || guardando || recintos.length === 0">
         <option [ngValue]="null">Seleccionar recinto</option>
-
-        @for (recinto of recintos; track recinto.id) {
-        <option [ngValue]="recinto.id">
-          {{ recinto.parroquia }} · {{ recinto.nombre }}
-        </option>
+        @for (recintoItem of recintos; track recintoItem.codigo) {
+          <option [ngValue]="recintoItem.codigo">{{ recintoItem.nombre }}</option>
         }
       </select>
 
-      <!-- FEMENINA / MASCULINA -->
-      @if (recintoId !== null) {
-      <div class="paso segundo" id="tipo-junta">
-        Tipo de junta
-      </div>
-
-      <div class="selector-tipo" role="group" aria-labelledby="tipo-junta">
-
-        <button type="button" [class.activo]="tipo === 'F'" [attr.aria-pressed]="tipo === 'F'"
-          [disabled]="!tieneJuntas('F') || guardando" (click)="seleccionarTipo('F')">
-          Femenina
-        </button>
-
-        <button type="button" [class.activo]="tipo === 'M'" [attr.aria-pressed]="tipo === 'M'"
-          [disabled]="!tieneJuntas('M') || guardando" (click)="seleccionarTipo('M')">
-          Masculina
-        </button>
-      </div>
+      @if (recinto; as r) {
+        <div class="recinto-datos">
+          <span class="ambito" [class.rural]="r.ambito === 'RURAL'">{{ r.ambito }}</span>
+          <span>{{ r.juntasF + r.juntasM }} juntas</span>
+        </div>
+        <div class="seccion-titulo segunda">Tipo y número de junta</div>
+        <div class="selector-tipo" role="group" aria-label="Tipo de junta">
+          <button type="button" [class.activo]="tipo === 'F'" [disabled]="guardando || !tieneJuntas('F')"
+            [attr.aria-pressed]="tipo === 'F'" (click)="seleccionarTipo('F')">Femenina</button>
+          <button type="button" [class.activo]="tipo === 'M'" [disabled]="guardando || !tieneJuntas('M')"
+            [attr.aria-pressed]="tipo === 'M'" (click)="seleccionarTipo('M')">Masculina</button>
+        </div>
       }
 
-      <!-- NÚMERO DE JUNTA -->
-      @if (tipo !== null) {
-      <div class="paso segundo" id="numero-junta">
-        Número de junta
-      </div>
+      @if (tipo) {
+        <div class="numeros-juntas" role="group" aria-label="Número de junta">
+          @for (j of juntasDisponibles; track j.id) {
+            <button type="button" class="boton-junta"
+              [class.activo]="juntaId === j.id"
+              [class.bloqueada]="juntaEstaBloqueada(j)"
+              [attr.aria-pressed]="juntaId === j.id"
+              [attr.aria-label]="'Junta ' + numeroJunta(j.numero) +
+                (juntaEstaBloqueada(j) ? ', finalizada, solo lectura' : ', disponible para registro')"
+              [disabled]="guardando" (click)="seleccionarJunta(j.id)">
+              <span class="junta-numero">{{ numeroJunta(j.numero) }}</span>
+              @if (juntaEstaBloqueada(j)) {
+                <span class="junta-candado" aria-hidden="true">🔒</span>
+              }
+            </button>
+          }
+        </div>
+      }
+    </section>
 
-      <div class="numeros-juntas" role="group" aria-labelledby="numero-junta">
+    @if (advertenciaCatalogo) {
+      <p class="aviso" role="status">{{ advertenciaCatalogo }}</p>
+    }
 
-        @for (junta of juntasDisponibles; track junta.id) {
-        <button type="button" [class.activo]="juntaId === junta.id" [attr.aria-pressed]="juntaId === junta.id"
-          [disabled]="guardando" (click)="seleccionarJunta(junta.id)">
-          {{ numeroJunta(junta.numero) }}
-        </button>
+    @if (junta; as juntaActual) {
+      @if (consultando) {
+        <p class="aviso" role="status">Consultando registro...</p>
+      }
+
+      @if (consultado) {
+
+        <section class="tarjeta contenedor-listas" aria-label="Ingreso directo de votos por lista">
+          <div class="titulo-listas">
+            <div>
+              <h2>Registro de votos · {{ ambito === 'URBANO' ? 'Urbano' : 'Rural' }}</h2>
+            </div>
+            <span>{{ listas.length }} listas</span>
+          </div>
+
+          <div class="tabla-listas" [class.con-vocales]="ambito === 'RURAL'" role="table" aria-label="Votos por lista política">
+            <div class="lista-columnas" role="row">
+              <span role="columnheader">Lista</span>
+              <span role="columnheader">Alcaldía</span>
+              <span role="columnheader">Concejalía {{ ambito?.toLowerCase() }}</span>
+              @if (ambito === 'RURAL') {
+                <span role="columnheader">Vocales</span>
+              }
+            </div>
+
+            @for (lista of listas; track lista.numero) {
+              <div class="lista-fila" [class.tiene-vocales]="lista.vocales.length > 0" role="row">
+                <div class="lista-identificador" role="rowheader" [attr.aria-label]="'Lista ' + lista.numero">
+                  <span>Lista</span>
+                  <strong>{{ lista.numero }}</strong>
+                </div>
+
+                <div class="lista-celda alcaldia" role="cell">
+                  <span class="etiqueta-movil">Alcaldía</span>
+                  @for (c of lista.alcaldes; track c.id) {
+                    <div class="candidato-voto">
+                      <label [for]="'voto-' + c.id">{{ c.nombre }}</label>
+                      <input class="voto-input" type="number"
+                        [id]="'voto-' + c.id" [name]="'voto-' + c.id"
+                        min="0" [max]="limiteJunta" step="1" inputmode="numeric"
+                        [attr.aria-label]="'Votos de Alcaldía, ' + c.nombre + ', lista ' + lista.numero"
+                        [ngModel]="votos[c.id]" (ngModelChange)="actualizarVoto(c.id, $event)"
+                        (focus)="seleccionarContenido($event)"
+                        (blur)="avisarVotoAlSalir(c.id)"
+                        (keydown.enter)="irAlSiguienteVoto($event)"
+                        [disabled]="guardando || consultando || registroFinalizado" />
+                    </div>
+                  } @empty {
+                    <span class="sin-candidato">—</span>
+                  }
+                </div>
+
+                <div class="lista-celda concejalia" role="cell">
+                  <span class="etiqueta-movil">Concejalía {{ ambito?.toLowerCase() }}</span>
+                  @for (c of lista.concejales; track c.id) {
+                    <div class="candidato-voto">
+                      <label [for]="'voto-' + c.id">{{ c.nombre }}</label>
+                      <input class="voto-input" type="number"
+                        [id]="'voto-' + c.id" [name]="'voto-' + c.id"
+                        min="0" [max]="limiteJunta" step="1" inputmode="numeric"
+                        [attr.aria-label]="'Votos de Concejalía ' + ambito?.toLowerCase() + ', ' + c.nombre + ', lista ' + lista.numero"
+                        [ngModel]="votos[c.id]" (ngModelChange)="actualizarVoto(c.id, $event)"
+                        (focus)="seleccionarContenido($event)"
+                        (blur)="avisarVotoAlSalir(c.id)"
+                        (keydown.enter)="irAlSiguienteVoto($event)"
+                        [disabled]="guardando || consultando || registroFinalizado" />
+                    </div>
+                  } @empty {
+                    <span class="sin-candidato">—</span>
+                  }
+                </div>
+
+                @if (ambito === 'RURAL') {
+                  <div class="lista-celda vocalia" [class.vocal-vacia]="lista.vocales.length === 0" role="cell">
+                    <span class="etiqueta-movil">Vocales</span>
+                    @for (c of lista.vocales; track c.id) {
+                      <div class="candidato-voto">
+                        <label [for]="'voto-' + c.id">{{ c.nombre }}</label>
+                        <input class="voto-input" type="number"
+                          [id]="'voto-' + c.id" [name]="'voto-' + c.id"
+                          min="0" [max]="limiteJunta" step="1" inputmode="numeric"
+                          [attr.aria-label]="'Votos de Vocales, ' + c.nombre + ', lista ' + lista.numero"
+                          [ngModel]="votos[c.id]" (ngModelChange)="actualizarVoto(c.id, $event)"
+                          (focus)="seleccionarContenido($event)"
+                          (blur)="avisarVotoAlSalir(c.id)"
+                          (keydown.enter)="irAlSiguienteVoto($event)"
+                          [disabled]="guardando || consultando || registroFinalizado" />
+                      </div>
+                    } @empty {
+                      <span class="sin-candidato">—</span>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          
+          </div>
+          <!-- Sección separada, compacta y adaptable: no alarga la tabla de listas. -->
+          <section class="especiales-panel" aria-label="Votos nulos y en blanco por dignidad">
+            <div class="especiales-titulo">
+              <strong>Votos nulos y blancos</strong>
+              <small>Se suman al total de cada dignidad</small>
+            </div>
+            <div class="especiales-grid">
+              @for (d of dignidadesEspeciales; track d.tipo) {
+                <div class="especial-tarjeta">
+                  <div class="especial-nombre">{{ d.titulo }}</div>
+                  <div class="especial-campos">
+                    <label [for]="'especial-' + d.tipo + '-nulos'">
+                      <span>Nulos</span>
+                      <input type="number" class="voto-input" min="0" [max]="limiteJunta" step="1"
+                        inputmode="numeric" [id]="'especial-' + d.tipo + '-nulos'"
+                        [name]="d.tipo + '-nulos'"
+                        [ngModel]="especiales[d.tipo].nulos"
+                        (ngModelChange)="actualizarEspecial(d.tipo, 'nulos', $event)"
+                        (focus)="seleccionarContenido($event)"
+                        (blur)="avisarEspecialAlSalir(d.tipo)"
+                        (keydown.enter)="irAlSiguienteVoto($event)"
+                        [disabled]="guardando || consultando || registroFinalizado" />
+                    </label>
+                    <label [for]="'especial-' + d.tipo + '-blancos'">
+                      <span>Blancos</span>
+                      <input type="number" class="voto-input" min="0" [max]="limiteJunta" step="1"
+                        inputmode="numeric" [id]="'especial-' + d.tipo + '-blancos'"
+                        [name]="d.tipo + '-blancos'"
+                        [ngModel]="especiales[d.tipo].blancos"
+                        (ngModelChange)="actualizarEspecial(d.tipo, 'blancos', $event)"
+                        (focus)="seleccionarContenido($event)"
+                        (blur)="avisarEspecialAlSalir(d.tipo)"
+                        (keydown.enter)="irAlSiguienteVoto($event)"
+                        [disabled]="guardando || consultando || registroFinalizado" />
+                    </label>
+                  </div>
+                </div>
+              }
+            </div>
+          </section>
+
+        </section>
+
+        @if (listasSinCandidato.length) {
+          <p class="aviso" role="status">
+            Listas sin concejales en la API: {{ listasSinCandidato.join(', ') }}.
+            No se han inventado candidaturas ni identificadores.
+          </p>
         }
-      </div>
+
+        <section class="tarjeta acta-panel" aria-label="Fotografía del acta de la junta">
+          <div class="acta-cabecera">
+            <div>
+              <h2>Fotografía del acta</h2>
+            </div>
+            @if (fotoDisponible && !fotoSeleccionada) { <span class="acta-estado">Guardada</span> }
+            @if (fotoSeleccionada) { <span class="acta-estado pendiente">PNG pendiente</span> }
+          </div>
+
+          @if (fotoVista) {
+            <img class="acta-previa" [src]="fotoVista" alt="Vista previa de la fotografía del acta" />
+          }
+
+
+          @if (!registroFinalizado) {
+            <input class="input-foto-oculto" type="file" id="foto-acta"
+              accept="image/jpeg,image/png,image/webp" capture="environment"
+              (change)="seleccionarFoto($event)" [disabled]="guardando || consultando || procesandoFoto || subiendoFoto" />
+            <div class="acta-acciones">
+              <label class="btn-foto" for="foto-acta">{{ fotoDisponible ? 'Reemplazar foto del acta' : 'Tomar fotografía' }}</label>
+            </div>
+          }
+        </section>
+
+        @if (!registroFinalizado) {
+          <div class="acciones">
+            <button class="btn-guardar" type="button" [disabled]="guardando || consultando || procesandoFoto || !consultado"
+              (click)="guardar()">
+              {{ guardando ? (subiendoFoto ? 'Guardando foto PNG...' : 'Guardando votos...') : 'Guardar votos y fotografía' }}
+            </button>
+            @if (registroExistente) {
+              <button class="btn-eliminar" type="button" [disabled]="guardando" (click)="eliminar()">Eliminar</button>
+            }
+          </div>
+          @if (registroExistente) {
+            <button class="btn-finalizar" type="button" (click)="finalizarJunta()"
+              [disabled]="guardando || consultando || subiendoFoto || !fotoDisponible || !!fotoSeleccionada">
+              Finalizar y bloquear junta
+            </button>
+          }
+        } @else {
+          <div class="accion-cerrada" role="status">🔒 Registro cerrado</div>
+        }
       }
 
-    </section>
-
-    @if (juntaId !== null) {
-
-    @if (consultando) {
-    <p class="aviso" role="status">
-      Consultando junta...
-    </p>
-    }
-
-    @if (consultado && registroExistente) {
-    <p class="aviso">
-      Registro existente. Puedes actualizarlo.
-    </p>
-    }
-
-    <!-- LISTAS -->
-    @if (consultado && listas.length > 0) {
-
-    <div class="titulo-listas">
-      <h2>Votos por lista</h2>
-      <span>{{ listas.length }} listas</span>
-    </div>
-
-    @for (lista of listas; track lista.numero) {
-
-    <section class="tarjeta lista-tarjeta" [attr.data-lista]="lista.numero" [attr.aria-label]="'Lista ' + lista.numero">
-
-      <div class="lista-cabecera">
-        <strong>Lista {{ lista.numero }}</strong>
-      </div>
-
-      <!-- ALCALDE -->
-      @for (c of lista.alcaldes; track c.id) {
-      <div class="fila-voto rol-alcalde">
-        <label [for]="'voto-' + c.id">
-          <small>Alcalde</small>
-          <span>{{ c.nombre }}</span>
-        </label>
-
-        <input [id]="'voto-' + c.id" [name]="'voto-' + c.id" type="number" min="0" step="1" inputmode="numeric"
-          placeholder="0" [(ngModel)]="votos[c.id]" [disabled]="guardando || consultando || !consultado" />
-      </div>
+      @if (!consultado && !consultando) {
+        <button class="btn-reintentar" type="button" (click)="consultarJunta()">Reintentar consulta</button>
       }
-
-      <!-- CONCEJAL URBANO -->
-      @for (c of lista.urbanos; track c.id) {
-      <div class="fila-voto rol-urbano">
-        <label [for]="'voto-' + c.id">
-          <small>Concejal urbano</small>
-          <span>{{ c.nombre }}</span>
-        </label>
-
-        <input [id]="'voto-' + c.id" [name]="'voto-' + c.id" type="number" min="0" step="1" inputmode="numeric"
-          placeholder="0" [(ngModel)]="votos[c.id]" [disabled]="guardando || consultando || !consultado" />
-      </div>
-      }
-
-      <!-- CONCEJAL RURAL -->
-      @for (c of lista.rurales; track c.id) {
-      <div class="fila-voto rol-rural">
-        <label [for]="'voto-' + c.id">
-          <small>Concejal rural</small>
-          <span>{{ c.nombre }}</span>
-        </label>
-
-        <input [id]="'voto-' + c.id" [name]="'voto-' + c.id" type="number" min="0" step="1" inputmode="numeric"
-          placeholder="0" [(ngModel)]="votos[c.id]" [disabled]="guardando || consultando || !consultado" />
-      </div>
-      }
-
-    </section>
-    }
-    
-    <!-- SUMATORIA DE VOTOS -->
-    <section class="tarjeta totales" aria-label="Totales de la junta">
-
-      <div>
-        <span>Total Alcaldes</span>
-        <strong>{{ totalAlcalde }}</strong>
-      </div>
-
-      <div>
-        <span> Total Urbanos</span>
-        <strong>{{ totalUrbanos }}</strong>
-      </div>
-
-      <div>
-        <span>Total Rurales</span>
-        <strong>{{ totalRurales }}</strong>
-      </div>
-
-    </section>
-    }
-
-    <!-- MENSAJES -->
-    @if (error) {
-    <p class="error" role="alert">{{ error }}</p>
-    }
-
-    @if (mensaje) {
-    <p class="mensaje" role="status">{{ mensaje }}</p>
-    }
-
-    @if (!consultado && !consultando) {
-    <button class="btn-reintentar" type="button" (click)="consultarJunta()">
-      Reintentar consulta
-    </button>
-    }
-
-    <!-- GUARDAR / ACTUALIZAR / ELIMINAR -->
-    @if (consultado && listas.length > 0) {
-    <div class="acciones">
-
-      <button class="btn-guardar" type="button" (click)="guardar()" [disabled]="guardando
-  || consultando
-  || !consultado
-  || !candidatos.length">
-
-        {{
-        guardando
-        ? 'Guardando...'
-        : registroExistente
-        ? 'Actualizar votos'
-        : 'Guardar votos'
-        }}
-      </button>
-
-      @if (registroExistente) {
-      <button class="btn-eliminar" type="button" (click)="eliminar()" [disabled]="guardando || consultando">
-        Eliminar
-      </button>
-      }
-
-    </div>
-    }
-
-    <button class="btn-otra" type="button" (click)="siguienteJunta()" [disabled]="guardando">
-      Otra junta
-    </button>
-
     } @else {
-
-    @if (error) {
-    <p class="error" role="alert">{{ error }}</p>
-
-    <button class="btn-reintentar" type="button" (click)="cargar()" [disabled]="cargando">
-      Reintentar carga
-    </button>
+      @if (error) {
+        <button class="btn-reintentar" type="button" (click)="cargar()" [disabled]="cargando">Reintentar carga</button>
+      }
     }
-    }
-
-    <footer class="pie-app">
-      <strong>MAGG</strong>
-      <span>Versión 1.0</span>
-    </footer>
-
+    <div class="espacio-inferior" aria-hidden="true"></div>
   </main>
 </ion-content>

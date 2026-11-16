@@ -3,7 +3,7 @@ export type Dignidad = 'ALCALDE' | 'URBANO' | 'RURAL';
 export interface CandidatoResultado {
   candidato_id: number;
   nombre: string;
-  tipo: 'ALCALDE' | 'CONCEJAL';
+  tipo: 'ALCALDE' | 'CONCEJAL' | 'VOCAL';
   ambito: 'URBANO' | 'RURAL' | null;
   numero_lista: string | null;
   total_votos: number;

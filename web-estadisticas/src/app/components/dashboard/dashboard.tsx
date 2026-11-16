@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { BASE_PATH } from '../../lib/electoral';
-import type { DashboardDatos, Dignidad } from '../../lib/electoral';
+import type { DashboardDatos } from '../../lib/electoral';
 import { normalizarDashboard } from '../../lib/dashboard-normalizar';
 import type { DatosRecintos, RespuestaRecintos } from '../../lib/recintos-estado';
 import VisualizacionVotos from './visualizacion-votos';
@@ -39,7 +39,6 @@ export default function Dashboard({ vista = 'vivo' }: { vista?: Vista }) {
   const [errorRecintos, setErrorRecintos] = useState('');
   const [cargando, setCargando] = useState(true);
   const [cargandoRecintos, setCargandoRecintos] = useState(true);
-  const [dignidad, setDignidad] = useState<Dignidad>('ALCALDE');
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [ultimaConsulta, setUltimaConsulta] = useState<Date | null>(null);
   const refrescarRef = useRef<() => void>(() => {});
@@ -166,7 +165,6 @@ export default function Dashboard({ vista = 'vivo' }: { vista?: Vista }) {
 
   const actualizar = useCallback(() => refrescarRef.current(), []);
   const conectado = Boolean(datos && !error);
-  const pendientes = (recintos?.recintos || []).filter(r => r.pendientes > 0);
   const hora = ultimaConsulta
     ? ultimaConsulta.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—';
 
@@ -223,7 +221,7 @@ export default function Dashboard({ vista = 'vivo' }: { vista?: Vista }) {
           {vista === 'recintos'
             ? <RecintosJuntas datos={recintos} error={errorRecintos} cargando={cargandoRecintos} onActualizar={actualizar} />
             : datos && (vista === 'vivo'
-              ? <VisualizacionVotos candidatos={datos.candidatos} dignidad={dignidad} onCambiarDignidad={setDignidad} />
+              ? <VisualizacionVotos datos={datos} conectado={conectado} hora={hora} />
               : <ResumenElectoral datos={datos} />)}
           {vista !== 'vivo' && <footer className="ev-footer-pie">
             MAGG · Elecciones 2026
