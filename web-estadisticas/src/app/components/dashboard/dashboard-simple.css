@@ -480,3 +480,18 @@
 @media (prefers-reduced-motion: reduce) {
   .ev-layout .ev-sidebar, .rc-progreso>span { transition: none; }
 }
+
+/* Ajustes integrados del resumen y revisión de actas */
+.ev-layout--resumen .ev-main,.ev-layout--recintos .ev-main{width:100%;max-width:1740px;min-width:0}
+.ev-layout--resumen .ev-pagina-resumen,.ev-layout--recintos .rc-modulo{min-width:0;width:100%}
+.ev-layout--resumen .ev-resumen-cobertura{min-width:0}
+@media (max-width:820px){
+  .ev-layout--resumen .ev-main,.ev-layout--recintos .ev-main{padding:14px 12px!important}
+}
+@media (max-width:480px){
+  .ev-layout--resumen .ev-main,.ev-layout--recintos .ev-main{padding:9px!important}
+}
+@media (max-width:720px){
+  .ev-layout .ev-abrir-menu{opacity:.95;top:12px;transform:none;width:34px;height:43px;background:#fff;border-radius:0 10px 10px 0}
+  .ev-layout .ev-sidebar{width:min(310px,88vw)}
+}

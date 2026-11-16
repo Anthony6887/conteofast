@@ -1,0 +1,89 @@
+/* ConteoFast · módulo de revisión de actas; independiente del gráfico en vivo */
+.ar-modulo,.ar-modulo *{box-sizing:border-box}
+.ar-modulo{--ar-azul:#203f75;--ar-texto:#182f52;--ar-borde:#d9e4f1;min-width:0;width:100%;color:var(--ar-texto);display:grid;gap:14px}
+.ar-encabezado,.ar-indicadores>div,.ar-recintos,.ar-contenido{background:#fff;border:1px solid var(--ar-borde);border-radius:14px;min-width:0}
+.ar-encabezado{padding:clamp(14px,2.4vw,24px);display:flex;align-items:center;justify-content:space-between;gap:14px}
+.ar-encabezado h2{margin:6px 0 5px;font-size:clamp(19px,2.2vw,26px);line-height:1.18}
+.ar-encabezado p{font-size:12px;color:#647993;margin:0}
+.ar-actualizar,.ar-descarga{border:1px solid #bcd0e9;background:#edf4ff;border-radius:9px;color:#1e5089;font-weight:750;padding:11px 13px;font-size:12px;text-decoration:none;white-space:nowrap}
+.ar-actualizar:disabled{opacity:.6;cursor:wait}
+.ar-indicadores{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}
+.ar-indicadores>div{padding:15px 17px;display:flex;flex-direction:column;gap:3px}
+.ar-indicadores small{font-size:11px;color:#6b7f97;line-height:1.3}
+.ar-indicadores strong{color:#234b86;font-size:clamp(20px,2vw,28px);font-variant-numeric:tabular-nums}
+.ar-filtros{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+.ar-filtros label{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:700;color:#4b6584;min-width:0}
+.ar-buscar{flex:1;min-width:190px}.ar-filtrar{width:min(260px,100%)}
+.ar-filtros input,.ar-filtros select{width:100%;height:41px;border:1px solid #cbd9ea;background:#fff;border-radius:9px;padding:0 12px;font-size:13px;color:#24446e}
+.ar-cuerpo{display:grid;grid-template-columns:minmax(220px,310px) minmax(0,1fr);gap:14px;min-width:0;align-items:start}
+.ar-recintos{overflow:hidden;position:sticky;top:12px}
+.ar-recintos-topo{padding:15px 17px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e5ecf4;font-size:12px}
+.ar-recintos-topo span{color:#6a7e96}
+.ar-recintos-lista{max-height:min(720px,75vh);overflow:auto;overscroll-behavior:contain;padding:7px}
+.ar-recinto-opcion{width:100%;display:flex;flex-direction:column;text-align:left;gap:4px;padding:12px;border:1px solid transparent;border-radius:10px;background:#fff;color:#243e64;margin-bottom:5px;cursor:pointer}
+.ar-recinto-opcion:hover{background:#f1f6fc}
+.ar-recinto-opcion--activo,.ar-recinto-opcion--activo:hover{background:#e9f2ff;border-color:#9fbfea}
+.ar-recinto-parroquia,.ar-sobrelinea{font-size:10px;font-weight:850;letter-spacing:.06em;color:#587eaa;text-transform:uppercase}
+.ar-recinto-opcion strong{font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+.ar-recinto-opcion small{font-size:10.5px;color:#657b94}
+.ar-sin-coincidencias{padding:15px;font-size:12px;color:#6e829a}
+.ar-contenido{padding:clamp(12px,1.8vw,20px);display:grid;gap:16px;min-width:0}
+.ar-juntas-encabezado{display:flex;justify-content:space-between;align-items:center;gap:12px;min-width:0}
+.ar-juntas-encabezado>div{min-width:0}.ar-juntas-encabezado h3{font-size:clamp(14px,1.5vw,17px);line-height:1.3;margin:5px 0}
+.ar-juntas-encabezado small{color:#667d98;overflow-wrap:anywhere}
+.ar-juntas-encabezado>strong{color:#2a5a99;background:#eef5ff;padding:9px 10px;border-radius:9px;font-size:12px;white-space:nowrap}
+.ar-juntas-botones{display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:7px;min-width:0}
+.ar-junta-boton{min-width:0;min-height:55px;background:#f3f6fa;border:1px solid #cddaea;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;color:#284a78}
+.ar-junta-boton strong{font-size:13px;font-variant-numeric:tabular-nums}
+.ar-junta-boton small{font-size:10px;color:#6a829e}
+.ar-junta-boton--cerrada{background:#e7ebf1;color:#525e70}
+.ar-junta-boton--activo,.ar-junta-boton--activo:hover{background:#234679;color:#fff;border-color:#234679}
+.ar-junta-boton--activo small{color:#dce8f7}
+.ar-detalle{border-top:1px solid #e1e9f3;padding-top:17px;min-width:0;display:grid;gap:16px}
+.ar-detalle-cabecera{display:flex;justify-content:space-between;gap:10px;align-items:start}
+.ar-detalle-cabecera h3{font-size:18px;margin:5px 0 4px}
+.ar-detalle-cabecera p{color:#667e97;font-size:12px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.ar-estado{font-weight:750;font-size:10px;padding:7px 9px;background:#eef2f7;color:#69798e;border-radius:20px;white-space:nowrap}
+.ar-estado--finalizada{background:#e4e9f0;color:#566274}.ar-estado--registrada{background:#e2f4e9;color:#21734d}
+.ar-mensaje{padding:22px 12px;text-align:center;color:#6f8298;font-size:12px;border:1px dashed #cad6e5;border-radius:10px;margin:0}
+.ar-alerta{background:#fff0f0;border:1px solid #edc6c9;border-radius:9px;padding:12px;color:#9e2735;font-size:12px}
+.ar-alerta button{display:inline-block;padding:7px 10px;margin-left:9px;background:#9e2735;color:#fff;border:0;border-radius:6px}
+.ar-acta{border:1px solid #dce5f0;background:#f8fafc;border-radius:12px;padding:clamp(10px,1.5vw,16px);display:flex;flex-direction:column;align-items:stretch;gap:11px;min-width:0}
+.ar-titulo-foto{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.ar-titulo-foto>div{display:grid;gap:4px;min-width:0}
+.ar-titulo-foto strong{font-size:13px}.ar-titulo-foto small{font-size:10.5px;color:#6b829b}
+.ar-foto-estado{padding:6px 8px;border-radius:20px;background:#f2e8e8;color:#915b5b;font-size:10px;font-weight:800;white-space:nowrap}
+.ar-foto-estado--ok{background:#def3e8;color:#20754d}
+.ar-foto-pulsable{width:100%;min-width:0;max-width:900px;align-self:center;position:relative;display:flex;flex-direction:column;align-items:center;gap:7px;overflow:hidden;border:1px solid #cfdaeb;border-radius:10px;background:#f3f5f8;padding:10px;cursor:zoom-in}
+.ar-foto{display:block;width:auto;max-width:100%;height:auto;max-height:440px;object-fit:contain;background:#fff;border-radius:7px}
+.ar-foto-pulsable>span{font-size:11px;color:#446589;font-weight:750}
+.ar-descarga{align-self:center;text-align:center;min-width:160px}
+.ar-foto-vacia{min-height:115px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:9px;color:#74869c;font-size:12px;text-align:center}
+.ar-conteo-cabecera h4{font-size:14px;margin:0 0 5px}.ar-conteo-cabecera small{color:#6d8199;font-size:11px}
+.ar-conteo-listas{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:10px;align-items:start}
+.ar-dignidad{border:1px solid #dce6f0;border-radius:11px;overflow:hidden;min-width:0;background:#fff}
+.ar-dignidad-cabecera{background:#eaf1fa;border-bottom:1px solid #d8e4f2;display:flex;align-items:center;justify-content:space-between;padding:11px 12px;gap:8px}
+.ar-dignidad-cabecera strong{font-size:12px}.ar-dignidad-cabecera span{color:#285284;font-size:12px;font-weight:850;white-space:nowrap}
+.ar-filas-votos{max-height:315px;overflow-y:auto;overscroll-behavior:contain}
+.ar-voto-fila{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;gap:6px;min-height:37px;padding:6px 10px;border-bottom:1px solid #ecf0f5;font-size:10.5px}
+.ar-voto-lista{font-size:10px;font-weight:800;color:#386399}.ar-voto-nombre{overflow-wrap:anywhere;line-height:1.35}.ar-voto-fila strong{text-align:right;font-variant-numeric:tabular-nums;font-size:12px}
+.ar-filas-vacias{padding:12px;font-size:11px;color:#7a8a9c}
+.ar-especiales{display:flex;gap:6px;flex-wrap:wrap;padding:10px;background:#f8fafc;color:#526986;font-size:11px}
+.ar-especiales>span{background:#eef2f7;padding:5px 7px;border-radius:5px}.ar-especiales b{color:#263d5f}
+.ar-nota{font-size:11px;color:#697f98;line-height:1.5;margin:2px 0 0}
+.ar-modal{position:fixed;inset:0;z-index:2000;display:grid;place-items:center;padding:clamp(8px,2vw,20px)}
+.ar-modal-fondo{position:absolute;inset:0;background:rgba(9,20,39,.86);border:0;cursor:zoom-out}
+.ar-modal-contenido{z-index:1;width:min(100%,1100px);height:min(95dvh,1000px);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;background:#fff}
+.ar-modal-barra{padding:12px 16px;display:flex;gap:12px;align-items:center;justify-content:space-between;background:#fff;font-size:12px}
+.ar-modal-barra strong{overflow-wrap:anywhere}.ar-modal-barra button{border:1px solid #cbd8e9;background:#eff4fb;color:#24486f;padding:8px 10px;border-radius:8px;flex-shrink:0}
+.ar-modal-imagen{flex:1;min-height:0;overflow:auto;display:flex;align-items:flex-start;justify-content:center;background:#192638}
+.ar-modal-imagen img{width:auto;height:auto;max-width:none;max-height:none;min-height:0;object-fit:contain;display:block}
+@media (max-width:1120px){.ar-cuerpo{grid-template-columns:minmax(190px,245px) minmax(0,1fr)}.ar-recintos-lista{max-height:600px}}
+@media (max-width:850px){.ar-indicadores{grid-template-columns:repeat(2,minmax(0,1fr))}.ar-cuerpo{grid-template-columns:1fr}.ar-recintos{position:static}.ar-recintos-lista{display:flex;overflow-x:auto;overflow-y:hidden;max-height:none;gap:7px;padding:8px}.ar-recinto-opcion{flex:0 0 min(240px,72vw);margin:0}.ar-conteo-listas{grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr))}}
+@media (max-width:560px){.ar-encabezado{flex-direction:column;align-items:stretch;padding:15px 13px}.ar-actualizar{width:100%}.ar-indicadores{gap:7px}.ar-indicadores>div{padding:11px 12px}.ar-indicadores strong{font-size:22px}.ar-filtros{display:grid;grid-template-columns:1fr}.ar-filtrar,.ar-buscar{width:100%}.ar-contenido{padding:11px}.ar-juntas-botones{grid-template-columns:repeat(auto-fill,minmax(53px,1fr))}.ar-conteo-listas{grid-template-columns:1fr}.ar-titulo-foto{align-items:flex-start}.ar-titulo-foto small{display:block;line-height:1.4}.ar-detalle-cabecera{flex-wrap:wrap}.ar-modal{padding:3px}.ar-modal-contenido{height:99dvh;border-radius:8px}.ar-modal-imagen img{max-width:initial}}
+@media (prefers-reduced-motion:reduce){.ar-modulo *{scroll-behavior:auto}}
+
+/* Resumen: mostrar solo recintos con evidencia fotográfica */
+.ar-filtro-foto{align-self:end;display:inline-flex;align-items:center;min-height:41px;border:1px solid #bfe2cc;background:#eaf7ef;color:#196b40;padding:0 13px;border-radius:9px;font-size:12px;font-weight:800;white-space:nowrap}
+.ar-junta-boton:not(:disabled){cursor:pointer}
+@media(max-width:560px){.ar-filtro-foto{width:100%;justify-content:center;white-space:normal}.ar-filtros{gap:8px}}

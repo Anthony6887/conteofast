@@ -34,12 +34,11 @@ const FOTOS_ALCALDES: Record<string, string> = {
   '18': '18-alcalde.webp',
   '20': '20-alcalde.png',
   '21': '21-alcalde.png',
-  '61': '61-alcalde.png',
+  '61': '61-alcalde.webp',
   '62': '62-alcalde.webp',
 };
 
 const LOGOS: Record<string, string> = {
-  '1': 'lista-1.png',
   '3': 'lista-3.png',
   '4': 'lista-4.png',
   '6-8': 'lista-8.png', // Imagen facilitada para el componente 8 de la alianza 6-8.

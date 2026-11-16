@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useMemo, useState, type CSSProperties, type ChangeEvent } from 'react';
 import Image from 'next/image';
 import type { DashboardDatos } from '../../lib/electoral';
 import { BASE_PATH, numero } from '../../lib/electoral';
@@ -135,7 +135,7 @@ export default function VisualizacionVotos({ datos, conectado, hora }: Props) {
         <div className="vl-herramientas">
           <span>{filas.length} listas</span>
           <label htmlFor="vl-orden">Ordenar:</label>
-          <select id="vl-orden" value={orden} onChange={e => setOrden(e.target.value as OrdenVisual)}>
+          <select id="vl-orden" value={orden} onChange={(e: ChangeEvent<HTMLSelectElement>) => setOrden(e.target.value as OrdenVisual)}>
             <option value="lista">Número de lista</option>
             <option value="votos">Mayor votación</option>
           </select>

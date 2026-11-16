@@ -18,11 +18,11 @@ const TIEMPO_ESPERA_MS = 8000;
 function Icono({ nombre }: { nombre: 'grafico' | 'resumen' | 'recintos' | 'menu' | 'cerrar' | 'actualizar' }) {
   const elementos = {
     grafico: <path d="M4 20V12M10 20V5M16 20v-8M22 20V3" />,
-    resumen: <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></>,
-    recintos: <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h3M14 8h3M7 12h3M14 12h3M7 16h3M14 16h3"/></>,
+    resumen: <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M8 9h8M8 13h8M8 17h5" /></>,
+    recintos: <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M7 8h3M14 8h3M7 12h3M14 12h3M7 16h3M14 16h3" /></>,
     menu: <path d="M4 6h16M4 12h16M4 18h16" />,
     cerrar: <path d="M5 5l14 14M19 5L5 19" />,
-    actualizar: <><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6 10a7 7 0 0 1 12-2l2 4M4 12l2 4a7 7 0 0 0 12-2"/></>
+    actualizar: <><path d="M20 7v5h-5M4 17v-5h5" /><path d="M6 10a7 7 0 0 1 12-2l2 4M4 12l2 4a7 7 0 0 0 12-2" /></>
   };
   return (
     <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor"
@@ -41,7 +41,7 @@ export default function Dashboard({ vista = 'vivo' }: { vista?: Vista }) {
   const [cargandoRecintos, setCargandoRecintos] = useState(true);
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [ultimaConsulta, setUltimaConsulta] = useState<Date | null>(null);
-  const refrescarRef = useRef<() => void>(() => {});
+  const refrescarRef = useRef<() => void>(() => { });
 
   useEffect(() => {
     let activo = true;
@@ -133,9 +133,9 @@ export default function Dashboard({ vista = 'vivo' }: { vista?: Vista }) {
     const intervalo = window.setInterval(() => {
       if (!document.hidden) {
         void obtenerDashboard();
-        // Solo el módulo de recintos consulta cada segundo; en otros módulos
-        // un estado resumido cada 10 s evita cientos de consultas innecesarias.
-        if (vista === 'recintos' || Date.now() - ultimaConsultaRecintos >= 10000) {
+        // La gráfica conserva actualización por segundo; recintos se consultan cada 10 s
+        // para evitar cientos de consultas a la API.
+        if (Date.now() - ultimaConsultaRecintos >= 10000) {
           void obtenerRecintos();
         }
       }
@@ -153,7 +153,7 @@ export default function Dashboard({ vista = 'vivo' }: { vista?: Vista }) {
       window.clearInterval(intervalo);
       document.removeEventListener('visibilitychange', alVolver);
       controladores.forEach(c => c.abort());
-      refrescarRef.current = () => {};
+      refrescarRef.current = () => { };
     };
   }, [vista]);
 
@@ -190,17 +190,17 @@ export default function Dashboard({ vista = 'vivo' }: { vista?: Vista }) {
           <Link href="/" onClick={() => setMenuAbierto(false)}
             className={`ev-menu-link ${vista === 'vivo' ? 'ev-menu-link--activo' : ''}`}
             aria-current={vista === 'vivo' ? 'page' : undefined}>
-            <Icono nombre="grafico"/><span>Visualización en vivo</span>
+            <Icono nombre="grafico" /><span>Visualización en vivo</span>
           </Link>
           <Link href="/resumen" onClick={() => setMenuAbierto(false)}
             className={`ev-menu-link ${vista === 'resumen' ? 'ev-menu-link--activo' : ''}`}
             aria-current={vista === 'resumen' ? 'page' : undefined}>
-            <Icono nombre="resumen"/><span>Resumen electoral</span>
+            <Icono nombre="resumen" /><span>Resumen electoral</span>
           </Link>
           <Link href="/recintos" onClick={() => setMenuAbierto(false)}
             className={`ev-menu-link ${vista === 'recintos' ? 'ev-menu-link--activo' : ''}`}
             aria-current={vista === 'recintos' ? 'page' : undefined}>
-            <Icono nombre="recintos"/><span>Recintos y juntas</span>
+            <Icono nombre="recintos" /><span>Recintos y juntas</span>
           </Link>
         </nav>
         <div className="ev-pendientes-lateral">
@@ -220,11 +220,12 @@ export default function Dashboard({ vista = 'vivo' }: { vista?: Vista }) {
           {!datos && error && <button type="button" className="ev-reintentar" onClick={actualizar}>Reintentar consulta</button>}
           {vista === 'recintos'
             ? <RecintosJuntas datos={recintos} error={errorRecintos} cargando={cargandoRecintos} onActualizar={actualizar} />
-            : datos && (vista === 'vivo'
-              ? <VisualizacionVotos datos={datos} conectado={conectado} hora={hora} />
-              : <ResumenElectoral datos={datos} />)}
+            : vista === 'resumen'
+              ? <ResumenElectoral datos={datos} recintos={recintos} errorRecintos={errorRecintos}
+                cargandoRecintos={cargandoRecintos} onActualizar={actualizar} />
+              : datos && <VisualizacionVotos datos={datos} conectado={conectado} hora={hora} />}
           {vista !== 'vivo' && <footer className="ev-footer-pie">
-            MAGG · Elecciones 2026
+            MAGG · Elecciones 2027
           </footer>}
         </main>
       </div>

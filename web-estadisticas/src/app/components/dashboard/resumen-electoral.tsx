@@ -1,75 +1,42 @@
 'use client';
 
 import { IndicadorCobertura } from './indicador-cobertura';
-import { TarjetaLista } from './tarjeta-lista';
-import {
-  LISTAS,
-  numero,
-  votosDignidad,
-  porcentaje,
-} from '../../lib/electoral';
+import { agruparPorListas, totalVotos, type TipoEscenario } from '../../lib/visualizacion-en-vivo';
+import { numero } from '../../lib/electoral';
 import type { DashboardDatos } from '../../lib/electoral';
+import type { DatosRecintos } from '../../lib/recintos-estado';
+import RevisionActas from './revision-actas';
 
-type Props = { datos: DashboardDatos };
+type Props = {
+  datos: DashboardDatos | null;
+  recintos: DatosRecintos | null;
+  errorRecintos: string;
+  cargandoRecintos: boolean;
+  onActualizar: () => void;
+};
+const TIPOS: { id: TipoEscenario; nombre: string; icono: string }[] = [
+  { id: 'ALCALDE', nombre: 'Alcaldía', icono: '◉' },
+  { id: 'URBANO', nombre: 'Concejales urbanos', icono: '▥' },
+  { id: 'RURAL', nombre: 'Concejales rurales', icono: '▥' },
+  { id: 'VOCAL', nombre: 'Vocales parroquiales', icono: '▤' },
+];
 
-function Caja({ titulo, valor, nota }: { titulo: string; valor: string; nota?: string }) {
-  return (
-    <div className="ev-resumen-kpi">
-      <span>{titulo}</span>
-      <strong>{valor}</strong>
-      {nota && <small>{nota}</small>}
-    </div>
-  );
-}
+export default function ResumenElectoral({ datos, recintos, errorRecintos, cargandoRecintos, onActualizar }: Props) {
+  const candidatos = datos?.candidatos || [];
+  return <div className="ev-pagina-resumen ar-resumen-pagina">
 
-/** Pantalla separada del gráfico principal: estadísticas y tarjetas existentes. */
-export default function ResumenElectoral({ datos }: Props) {
-  const avance = porcentaje(datos.juntas_confirmadas ?? 0, datos.juntas_total ?? 0);
-  const candidatos = Array.isArray(datos?.candidatos)
-    ? datos.candidatos
-    : [];
-
-  const adicionales = candidatos.filter(
-    candidato =>
-      candidato.numero_lista &&
-      !LISTAS.some(
-        lista =>
-          String(lista.numero) === String(candidato.numero_lista)
-      )
-  ).length;
-
-  return (
-    <div className="ev-pagina-resumen">
-      <header className="ev-resumen-encabezado">
-        <span className="ev-eyebrow">ESTADÍSTICAS</span>
-        <h1>Resumen electoral</h1>
-        <p>Seguimiento de votos registrados y avance de juntas. Información no oficial.</p>
-      </header>
-
-      <section className="ev-resumen-kpis" aria-label="Resumen de votos y juntas">
-        <Caja titulo="Votos · Alcalde" valor={numero(votosDignidad(candidatos, 'ALCALDE'))} />
-        <Caja titulo="Votos · Concejales urbanos" valor={numero(votosDignidad(candidatos, 'URBANO'))} />
-        <Caja titulo="Votos · Concejales rurales" valor={numero(votosDignidad(candidatos, 'RURAL'))} />
-      </section>
-
-      <div className="ev-resumen-cobertura">
-        <IndicadorCobertura registradas={datos.juntas_confirmadas} total={datos.juntas_total} />
-      </div>
-
-      <section className="seccion-listas ev-resumen-listas">
-        <div className="seccion-titulo">
-          <div><h2>Candidatos y concejales</h2></div>
-          <div className="pildora-listas">{LISTAS.length} listas</div>
-        </div>
-        <div className="listas-grid">
-          {LISTAS.map(lista => (
-            <TarjetaLista key={lista.numero} lista={lista} candidatos={candidatos} />
-          ))}
-        </div>
-        {adicionales > 0 && (
-          <p className="ev-nota">La API también devuelve {numero(adicionales)} candidato(s) de otras listas no configuradas para este panel.</p>
-        )}
-      </section>
-    </div>
-  );
+    <RevisionActas datos={recintos} candidatos={candidatos} cargando={cargandoRecintos}
+      error={errorRecintos} onActualizar={onActualizar} />
+    <style jsx>{`
+      .ar-resumen-pagina{display:grid;gap:15px;min-width:0}
+      .ar-resumen-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+      .ar-resumen-kpi{display:flex;flex-direction:column;min-width:0;gap:6px;background:#fff;padding:16px;border:1px solid #dce7f4;border-radius:13px}
+      .ar-resumen-kpi>span{font-size:11px;font-weight:800;color:#526e90;display:flex;gap:7px;align-items:center}
+      .ar-resumen-kpi>span i{font-style:normal;font-size:15px;color:#3471ac}
+      .ar-resumen-kpi strong{font-size:clamp(20px,2.2vw,30px);color:#1b467f;font-variant-numeric:tabular-nums}
+      .ar-resumen-kpi small{font-size:10px;color:#8491a4}
+      @media (max-width:850px){.ar-resumen-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+      @media (max-width:430px){.ar-resumen-kpis{gap:7px}.ar-resumen-kpi{padding:11px}}
+    `}</style>
+  </div>;
 }
