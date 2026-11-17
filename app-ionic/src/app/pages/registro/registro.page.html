@@ -411,8 +411,7 @@
       <div class="acta-acciones">
         <button type="button" class="btn-foto" (click)="abrirCamara()"
           [disabled]="guardando || consultando || procesandoFoto || camaraCargando">
-          {{ camaraCargando ? 'Abriendo cámara…' : (fotoSeleccionada ? 'Tomar otra fotografía' : 'Abrir cámara y tomar
-          fotografía') }}
+          {{ camaraCargando ? 'Abriendo cámara…' : (fotoSeleccionada ? 'Tomar otra fotografía' : 'Abrir cámara') }}
         </button>
       </div>
       }

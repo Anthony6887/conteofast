@@ -143,12 +143,45 @@ export class RegistroPage implements OnInit {
     return this.juntasRecinto.find(j => Number(j.id) === this.juntaId) ?? null;
   }
   /** Se exige el padrón real de la junta: nunca usar el promedio 350 como padrón oficial. */
+
   get limiteJunta(): number | null {
-    if (!this.junta || !this.recinto || this.junta.padron === null) return null;
-    const padron = Number(this.junta.padron);
-    return Number.isSafeInteger(padron) && padron > 0 && padron <= this.recinto.electores
-      ? padron : null;
+    const junta = this.junta;
+
+    if (!junta) return null;
+
+    const padron = Number(junta.padron);
+
+    // Nunca aceptar padrones vacíos, negativos o decimales.
+    if (!Number.isSafeInteger(padron) || padron <= 0) {
+      return null;
+    }
+
+    const fuente = (
+      junta as CfJunta & { padron_fuente?: string }
+    ).padron_fuente;
+
+    // Aceptar el padrón referencial autorizado
+    // explícitamente por el backend para simulaciones.
+    if (fuente === 'REFERENCIAL_PRUEBAS') {
+      return padron;
+    }
+
+    // Para padrones oficiales conservar la comprobación
+    // contra el total de electores del recinto.
+    const electores = this.recinto?.electores;
+
+    if (
+      typeof electores !== 'number' ||
+      !Number.isSafeInteger(electores) ||
+      electores <= 0 ||
+      padron > electores
+    ) {
+      return null;
+    }
+
+    return padron;
   }
+
   get dignidadesEspeciales(): { tipo: TipoDignidad; titulo: string }[] {
     const datos: { tipo: TipoDignidad; titulo: string }[] = [
       { tipo: 'ALCALDE', titulo: 'Alcaldía' },
