@@ -1,4 +1,4 @@
-import type { DashboardDatos } from './electoral';
+import type { DashboardDatos, DignidadEspecial, RegistroEspecial } from './electoral';
 
 type Objeto = Record<string, unknown>;
 const esObjeto = (valor: unknown): valor is Objeto =>
@@ -26,10 +26,29 @@ export function normalizarDashboard(respuesta: unknown): DashboardDatos {
   }));
   const juntasPorParroquia = Array.isArray(bruto.juntas_por_parroquia)
     ? bruto.juntas_por_parroquia.filter(esObjeto).map(item => ({
-        parroquia: String(item.parroquia ?? ''),
-        juntas: noNegativo(item.juntas),
-      }))
+      parroquia: String(item.parroquia ?? ''),
+      juntas: noNegativo(item.juntas),
+    }))
     : [];
+
+  // Si el backend anterior no envía especiales, no fabricar ceros.
+  const permitidas = new Set<DignidadEspecial>(['ALCALDE', 'URBANO', 'RURAL', 'VOCAL']);
+  const especiales: RegistroEspecial[] | undefined = noNegativo(bruto.juntas_confirmadas) === 0
+    ? (['ALCALDE', 'URBANO', 'RURAL', 'VOCAL'] as DignidadEspecial[]).map(dignidad => ({
+      dignidad, nulos: 0, blancos: 0, disponible: true,
+    }))
+    : Array.isArray(bruto.especiales)
+      ? bruto.especiales.filter(esObjeto).flatMap(item => {
+        const dignidad = String(item.dignidad ?? '').trim().toUpperCase() as DignidadEspecial;
+        if (!permitidas.has(dignidad)) return [];
+        return [{
+          dignidad,
+          nulos: noNegativo(item.nulos),
+          blancos: noNegativo(item.blancos),
+          disponible: item.disponible === true,
+        }];
+      })
+      : undefined;
 
   return {
     ...bruto,
@@ -42,5 +61,6 @@ export function normalizarDashboard(respuesta: unknown): DashboardDatos {
       ? bruto.consultado_en : new Date().toISOString(),
     juntas_por_parroquia: juntasPorParroquia,
     candidatos,
+    especiales,
   } as DashboardDatos;
 }

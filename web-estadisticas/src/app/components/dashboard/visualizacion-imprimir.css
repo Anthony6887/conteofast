@@ -1,0 +1,140 @@
+/* Botón para generar el PDF del escenario electoral que se está visualizando. */
+.vl-solo-impresion { display: none; }
+
+.vl-boton-pdf {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 15px;
+  border: 1px solid #1b5eac;
+  border-radius: 9px;
+  color: #fff;
+  background: #205fa9;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .2s ease, transform .2s ease;
+}
+.vl-boton-pdf:hover { background: #174880; }
+.vl-boton-pdf:active { transform: translateY(1px); }
+.vl-boton-pdf:focus-visible { outline: 3px solid #88c2ff; outline-offset: 2px; }
+
+@media (max-width: 620px) {
+  .vl-herramientas { flex-wrap: wrap; white-space: normal; }
+  .vl-boton-pdf { padding: 9px 12px; font-size: 11px; }
+}
+
+/* Chrome / Edge: Impresión o Guardar como PDF. A3 apaisado para que las 11 barras
+   (9 listas + nulos y blancos) entren completas y mantengan textos legibles. */
+@page { size: A3 landscape; margin: 9mm; }
+
+@media print {
+  html, body, #__next {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    background: #fff !important;
+  }
+  body, body * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  /* No imprimir el resto del dashboard. */
+  body * { visibility: hidden !important; }
+  .vl-pagina, .vl-pagina * { visibility: visible !important; }
+  .vl-pagina {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    transform: none !important;
+  }
+  .ev-layout--vivo, .ev-layout--vivo .ev-contenido,
+  .ev-layout--vivo .ev-main, .vl-pagina, .vl-panel,
+  .vl-desplazamiento, #panel-grafico-votos {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+  .vl-panel {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 5mm 4mm !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: white !important;
+    break-inside: avoid-page;
+  }
+  .vl-pestanas, .vl-herramientas, .vl-aviso-vacio {
+    display: none !important;
+  }
+  .vl-solo-impresion {
+    display: block !important;
+    margin-top: 5px !important;
+    font-size: 12px !important;
+    color: #436384 !important;
+  }
+  .vl-encabezado h1 { font-size: 29px !important; }
+  .vl-encabezado, .vl-barra-estado, .vl-cabecera-grafico {
+    break-inside: avoid-page;
+  }
+  .vl-contadores {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+  }
+  .vl-contadores > div {
+    min-width: 100px !important;
+    padding: 8px 10px !important;
+    text-align: right !important;
+  }
+  .vl-barra-estado { margin: 13px 0 !important; }
+  .vl-cabecera-grafico { margin: 7px 0 12px !important; }
+  .vl-cabecera-grafico h2 { font-size: 20px !important; }
+  .vl-desplazamiento {
+    display: block !important;
+    width: 100% !important;
+    padding: 0 !important;
+    scrollbar-width: none !important;
+  }
+  .vl-grafico {
+    display: grid !important;
+    grid-template-columns: repeat(var(--vl-columnas), minmax(0, 1fr)) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    align-items: stretch !important;
+    gap: 6px !important;
+    break-inside: avoid-page;
+  }
+  .vl-columna { min-width: 0 !important; break-inside: avoid-page; }
+  .vl-trazado { height: 120mm !important; }
+  .vl-avatar { width: 56px !important; height: 56px !important; }
+  .vl-numero-lista { font-size: 12px !important; }
+  .vl-numero-votos strong { font-size: 17px !important; }
+  .vl-pie-reporte {
+    display: flex !important;
+    justify-content: space-between !important;
+    margin-top: 10mm !important;
+    padding-top: 3mm !important;
+    font-size: 11px !important;
+    border-top: 1px solid #ccd7e6 !important;
+  }
+}

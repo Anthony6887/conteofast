@@ -323,7 +323,6 @@ export default function RevisionActas({ datos, candidatos, cargando, error, onAc
           </> : <p className="ar-mensaje">Selecciona un recinto para comenzar.</p>}
         </div>
       </div>
-      <p className="ar-nota">Solo se listan recintos y juntas con fotografía registrada. La imagen PNG se carga cuando seleccionas la junta. Datos de monitoreo no oficial.</p>
     </>}
   </section>;
 }

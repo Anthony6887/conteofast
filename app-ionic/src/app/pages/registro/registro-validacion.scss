@@ -1,0 +1,125 @@
+/* Estilos añadidos a la vista de registro, sin reemplazar registro.page.scss. */
+:host {
+  --alerta-voto: #b42336;
+  --fondo-alerta: #fff1f2;
+  --borde-alerta: #e48c99;
+}
+
+.contenedor-listas {
+  .voto-input.voto-input--invalido,
+  .voto-input[aria-invalid='true'] {
+    border: 2px solid var(--alerta-voto) !important;
+    background: var(--fondo-alerta) !important;
+    color: #901c2c !important;
+    box-shadow: 0 0 0 2px rgba(180, 35, 54, .12) !important;
+  }
+
+  .voto-input.voto-input--invalido:focus,
+  .voto-input[aria-invalid='true']:focus {
+    outline: 2px solid var(--borde-alerta) !important;
+    outline-offset: 2px;
+  }
+
+  .voto-error {
+    display: block;
+    width: 100%;
+    margin: 4px 0 7px;
+    color: var(--alerta-voto);
+    font-size: 11px;
+    line-height: 1.4;
+    font-weight: 750;
+    overflow-wrap: anywhere;
+  }
+
+  .especial-campos .voto-error { text-align: left; }
+}
+
+.limite-votos-info {
+  margin: 4px 0 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #355b88;
+}
+
+.aviso-validacion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 4px 10px;
+  padding: 10px 12px;
+  margin: 6px 0 12px;
+  background: var(--fondo-alerta);
+  border: 1px solid #efb5be;
+  border-radius: 9px;
+  color: #8f2232;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.aviso-validacion strong { font-weight: 850; }
+.aviso-validacion span { flex: 1 1 210px; }
+
+.camara-contenedor {
+  overflow: hidden;
+  width: 100%;
+  max-width: 680px;
+  margin: 12px auto;
+  border-radius: 12px;
+  background: #122b50;
+}
+.camara-video {
+  display: block;
+  width: 100%;
+  max-height: 55dvh;
+  object-fit: contain;
+  background: #101c30;
+}
+.acta-acciones { flex-wrap: wrap; }
+.acta-acciones button.btn-foto { cursor: pointer; font: inherit; }
+.btn-cerrar-camara {
+  min-height: 42px;
+  border: 1px solid #bbcee9;
+  border-radius: 9px;
+  padding: 9px 16px;
+  background: #f4f8ff;
+  color: #234870;
+  font-weight: 800;
+  cursor: pointer;
+}
+.aviso-foto-local,
+.aviso-cierre {
+  margin: 10px 0;
+  color: #526a88;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.aviso-cierre {
+  padding: 10px 12px;
+  background: #fff8e6;
+  border: 1px solid #e7d397;
+  border-radius: 9px;
+  color: #72521c;
+}
+.btn-guardar:disabled { opacity: .55; cursor: not-allowed; }
+
+@media (max-width: 540px) {
+  .contenedor-listas .voto-error { font-size: 10px; }
+  .limite-votos-info, .aviso-validacion { font-size: 11px; }
+  .camara-video { max-height: 46dvh; }
+  .acta-acciones button { width: 100%; }
+}
+
+.btn-guardar-foto-local {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 40px;
+  margin-top: 4px;
+  border-radius: 8px;
+  border: 1px solid #bed2e9;
+  background: #edf5ff;
+  color: #1c4678;
+  padding: 9px 13px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}

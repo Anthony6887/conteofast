@@ -12,7 +12,7 @@ export const runtime = 'nodejs';
 
 const HEADERS = {
   'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
-  'X-ConteoFast-Route': 'dashboard-candidatos-v4',
+  'X-ConteoFast-Route': 'dashboard-candidatos-especiales-v5',
 };
 
 type Objeto = Record<string, unknown>;
@@ -122,6 +122,30 @@ export async function GET() {
       total_votos: numeroSeguro(c.total_votos),
     }));
 
+    // Los nulos/blancos deben venir de /resumen, agregados desde
+    // cf_registro_especiales por el backend, NO desde candidatos.
+    // Ausencia del campo => interfaz muestra "sin datos", nunca un cero inventado.
+    const dignidades = new Set(['ALCALDE', 'URBANO', 'RURAL', 'VOCAL']);
+    // Sin ninguna junta confirmada, el total verificado de todas las
+    // dignidades es cero. No es un dato inventado.
+    const juntasConfirmadas = numeroSeguro(resumen.juntas_confirmadas);
+    const especiales = juntasConfirmadas === 0
+      ? ['ALCALDE', 'URBANO', 'RURAL', 'VOCAL'].map(dignidad => ({
+        dignidad, nulos: 0, blancos: 0, disponible: true,
+      }))
+      : Array.isArray(resumen.especiales)
+        ? resumen.especiales.filter(esObjeto).flatMap(item => {
+          const dignidad = String(item.dignidad ?? '').trim().toUpperCase();
+          if (!dignidades.has(dignidad)) return [];
+          return [{
+            dignidad,
+            nulos: numeroSeguro(item.nulos),
+            blancos: numeroSeguro(item.blancos),
+            disponible: item.disponible === true,
+          }];
+        })
+        : undefined;
+
     const recintos = new Set<string>();
     const porParroquia = new Map<string, number>();
     for (const junta of catalogo.juntas) {
@@ -135,12 +159,13 @@ export async function GET() {
       data: {
         eleccion_id: eleccionResumen || catalogo.eleccionId,
         consultado_en: new Date().toISOString(),
-        juntas_confirmadas: numeroSeguro(resumen.juntas_confirmadas),
+        juntas_confirmadas: juntasConfirmadas,
         juntas_total: catalogo.juntas.length,
         recintos_total: recintos.size,
         parroquias_total: porParroquia.size,
         juntas_por_parroquia: Array.from(porParroquia, ([parroquia, juntas]) => ({ parroquia, juntas })),
         candidatos,
+        especiales,
       },
     }, { status: 200, headers: HEADERS });
   } catch (error) {

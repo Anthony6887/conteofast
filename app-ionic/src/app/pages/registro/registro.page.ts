@@ -1,23 +1,47 @@
-import { ChangeDetectorRef, Component, DestroyRef, inject } from '@angular/core';
-import type { OnInit } from '@angular/core';
+
+import {
+  ChangeDetectorRef,
+  Component,
+  DestroyRef,
+  ViewChild,
+  inject,
+} from '@angular/core';
+import type { ElementRef, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer } from '@angular/platform-browser';
 import type { SafeUrl } from '@angular/platform-browser';
 import {
-  IonBackButton, IonButtons, IonContent, IonHeader, IonTitle, IonToolbar, ToastController
+  IonBackButton,
+  IonButtons,
+  IonContent,
+  IonHeader,
+  IonTitle,
+  IonToolbar,
+  ToastController,
 } from '@ionic/angular';
 
 import { ConteofastService } from '../../core/conteofast.service';
-import type { CfCandidato, CfJunta, CfRegistro, CfEspeciales, CfDignidad } from '../../core/conteofast.service';
+import type {
+  CfCandidato,
+  CfJunta,
+  CfRegistro,
+  CfEspeciales,
+  CfDignidad,
+} from '../../core/conteofast.service';
 import {
-  RECINTOS_ELECTORALES, RECINTOS_POR_CODIGO, LISTAS_CONCEJALES, VOCALES_POR_RECINTO
+  RECINTOS_ELECTORALES,
+  RECINTOS_POR_CODIGO,
+  LISTAS_CONCEJALES,
+  VOCALES_POR_RECINTO,
 } from '../../core/recintos-electorales';
-import type { AmbitoRecinto, RecintoElectoral } from '../../core/recintos-electorales';
+import type {
+  AmbitoRecinto,
+  RecintoElectoral,
+} from '../../core/recintos-electorales';
 
 type TipoJunta = 'F' | 'M';
 type TipoDignidad = CfDignidad;
 type DetalleVoto = { candidato_id: number; votos: number };
-
 interface ListaAgrupada {
   numero: string;
   alcaldes: CfCandidato[];
@@ -25,7 +49,6 @@ interface ListaAgrupada {
   vocales: CfCandidato[];
   disponible: boolean;
 }
-
 /** Compatibilidad de antiguos catálogos que no traían el ámbito de estos concejales. */
 const CONCEJALES_LEGADOS: Record<number, { nombre: string; numero: string; ambito: AmbitoRecinto }> = {
   2: { nombre: 'CECILIA SILVA', numero: '8', ambito: 'RURAL' },
@@ -37,13 +60,12 @@ const CONCEJALES_LEGADOS: Record<number, { nombre: string; numero: string; ambit
   11: { nombre: 'LUIS SILVA', numero: '7', ambito: 'RURAL' },
   12: { nombre: 'PAOLA PICO', numero: '7', ambito: 'URBANO' }
 };
-
 @Component({
   selector: 'app-registro',
   standalone: true,
   imports: [FormsModule, IonBackButton, IonButtons, IonContent, IonHeader, IonTitle, IonToolbar],
   templateUrl: './registro.page.html',
-  styleUrls: ['./registro.page.scss']
+  styleUrls: ['./registro.page.scss', './registro-validacion.scss']
 })
 export class RegistroPage implements OnInit {
   private readonly api = inject(ConteofastService);
@@ -54,11 +76,19 @@ export class RegistroPage implements OnInit {
   private toastVersion = 0;
   private readonly destroyRef = inject(DestroyRef);
   private consultaVersion = 0;
-
+  /** Anuncia por toast solo la primera transición a error de cada campo. */
+  private readonly camposConErrorNotificado = new Set<string>();
+  private ultimoCampoModificado: string | null = null;
+  @ViewChild('camaraVideo') videoCamara?: ElementRef<HTMLVideoElement>;
+  camaraActiva = false;
+  camaraCargando = false;
+  private camaraStream: MediaStream | null = null;
   constructor() {
-    this.destroyRef.onDestroy(() => this.liberarFotoVista());
+    this.destroyRef.onDestroy(() => {
+      this.detenerCamara();
+      this.liberarFotoVista();
+    });
   }
-
   juntas: CfJunta[] = [];
   candidatos: CfCandidato[] = [];
   codigoRecinto: number | null = null;
@@ -70,7 +100,6 @@ export class RegistroPage implements OnInit {
     CONCEJAL: { nulos: 0, blancos: 0 },
     VOCAL: { nulos: 0, blancos: 0 }
   };
-
   cargando = false;
   consultando = false;
   consultado = false;
@@ -89,37 +118,30 @@ export class RegistroPage implements OnInit {
   error = '';
   mensaje = '';
   advertenciaCatalogo = '';
-
   /** Sólo se muestran los códigos oficiales del Excel que tienen juntas en la API. */
   get recintos(): RecintoElectoral[] {
     const codigos = new Set(this.juntas.map(j => this.codigoDeJunta(j)).filter((n): n is number => n !== null));
     return RECINTOS_ELECTORALES.filter(r => codigos.has(r.codigo))
       .sort((a, b) => a.codigo - b.codigo);
   }
-
   get recinto(): RecintoElectoral | null {
     return this.codigoRecinto === null ? null : RECINTOS_POR_CODIGO.get(this.codigoRecinto) ?? null;
   }
-
   get ambito(): AmbitoRecinto | null {
     return this.recinto?.ambito ?? null;
   }
-
   get juntasRecinto(): CfJunta[] {
     return this.codigoRecinto === null ? []
       : this.juntas.filter(j => this.codigoDeJunta(j) === this.codigoRecinto);
   }
-
   get juntasDisponibles(): CfJunta[] {
     return this.tipo === null ? [] : this.juntasRecinto
       .filter(j => j.tipo === this.tipo)
       .sort((a, b) => Number(a.numero) - Number(b.numero));
   }
-
   get junta(): CfJunta | null {
     return this.juntasRecinto.find(j => Number(j.id) === this.juntaId) ?? null;
   }
-
   /** Se exige el padrón real de la junta: nunca usar el promedio 350 como padrón oficial. */
   get limiteJunta(): number | null {
     if (!this.junta || !this.recinto || this.junta.padron === null) return null;
@@ -127,7 +149,6 @@ export class RegistroPage implements OnInit {
     return Number.isSafeInteger(padron) && padron > 0 && padron <= this.recinto.electores
       ? padron : null;
   }
-
   get dignidadesEspeciales(): { tipo: TipoDignidad; titulo: string }[] {
     const datos: { tipo: TipoDignidad; titulo: string }[] = [
       { tipo: 'ALCALDE', titulo: 'Alcaldía' },
@@ -136,18 +157,14 @@ export class RegistroPage implements OnInit {
     if (this.ambito === 'RURAL') datos.push({ tipo: 'VOCAL', titulo: 'Vocales' });
     return datos;
   }
-
   get juntaBloqueada(): boolean { return this.registroFinalizado; }
-
   /** Estado individual de cada junta; nunca depende del cierre de la junta seleccionada. */
   juntaEstaBloqueada(junta: CfJunta): boolean {
     return junta.bloqueado === true || Number(junta.bloqueado) === 1;
   }
-
   get limiteReferencial(): boolean {
     return this.junta !== null && this.limiteJunta === null;
   }
-
   /** Voces de la API filtradas por el código CNE del recinto, incluidas las listas solo VOCAL. */
   get candidatosActivos(): CfCandidato[] {
     const ambito = this.ambito;
@@ -170,47 +187,90 @@ export class RegistroPage implements OnInit {
         ['MANUEL PAREDES', 'LISTA 1'].includes(this.normalizarNombre(c.nombre));
     });
   }
-
   get vocalesFaltantes(): string[] {
     const esperados = this.codigoRecinto === null ? [] : VOCALES_POR_RECINTO[this.codigoRecinto] || [];
     if (this.ambito !== 'RURAL') return [];
     const presentes = new Set(this.vocales.map(c => this.numeroLista(c)));
     return esperados.filter(lista => !presentes.has(lista));
   }
-
   get alcaldes(): CfCandidato[] {
     return this.candidatosActivos.filter(c => c.tipo === 'ALCALDE');
   }
-
   get concejales(): CfCandidato[] {
     return this.candidatosActivos.filter(c => c.tipo === 'CONCEJAL');
   }
-
   get vocales(): CfCandidato[] {
     return this.candidatosActivos.filter(c => c.tipo === 'VOCAL');
   }
-
   get totalVocales(): number {
     return this.sumar(this.vocales);
   }
-
   private totalEspecial(tipo: TipoDignidad): number {
     const e = this.especiales[tipo];
     return (Number(e.nulos) || 0) + (Number(e.blancos) || 0);
   }
-
   private totalDignidad(tipo: TipoDignidad): number {
     const candidatos = tipo === 'ALCALDE' ? this.totalAlcaldes :
       tipo === 'CONCEJAL' ? this.totalConcejales : this.totalVocales;
     return candidatos + this.totalEspecial(tipo);
   }
-
+  /** Errores visibles en el mismo instante de escribir, también por suma de dignidad. */
+  errorVoto(c: CfCandidato): string {
+    if (!this.consultado) return '';
+    const cantidad = this.votos[c.id];
+    const nombre = String(c.nombre ?? '').trim();
+    const limite = this.limiteJunta;
+    if (cantidad === null || cantidad === undefined ||
+      !Number.isSafeInteger(cantidad) || cantidad < 0) {
+      return `${nombre}: ingresa un número entero desde cero.`;
+    }
+    if (limite === null) return 'Esta junta no tiene un padrón válido.';
+    if (cantidad > limite) return `${cantidad} excede el máximo de votos.`;
+    const total = this.totalDignidad(c.tipo);
+    if (total > limite && this.ultimoCampoModificado === `voto-${c.id}`) {
+      return `${total} excede el máximo de votos.`;
+    }
+    return '';
+  }
+  errorEspecial(tipo: TipoDignidad, campo: 'nulos' | 'blancos'): string {
+    if (!this.consultado) return '';
+    const cantidad = this.especiales[tipo][campo];
+    const limite = this.limiteJunta;
+    const titulo = `${this.nombreDignidad(tipo)} · ${campo}`;
+    if (cantidad === null || cantidad === undefined ||
+      !Number.isSafeInteger(cantidad) || cantidad < 0) {
+      return `${titulo}: introduce un número entero desde cero.`;
+    }
+    if (limite === null) return 'Esta junta no tiene un padrón válido.';
+    if (cantidad > limite) return `${cantidad} supera máximo de votos.`;
+    const total = this.totalDignidad(tipo);
+    if (total > limite && this.ultimoCampoModificado === `especial-${tipo}-${campo}`) {
+      return `${total} supera los votos en total.`;
+    }
+    return '';
+  }
+  private nombreDignidad(tipo: TipoDignidad): string {
+    return tipo === 'ALCALDE' ? 'Alcaldía' : tipo === 'VOCAL' ? 'Vocales' : 'Concejalía';
+  }
+  /** Evita el toast repetitivo al escribir dígitos consecutivos. */
+  private notificarErrorDeCampo(clave: string, mensaje: string): void {
+    if (!mensaje) {
+      this.camposConErrorNotificado.delete(clave);
+      return;
+    }
+    if (this.camposConErrorNotificado.has(clave)) return;
+    this.camposConErrorNotificado.add(clave);
+    // En vacío el mensaje inline basta: no interrumpe al reemplazar el 0 inicial.
+    if (mensaje.includes('introduce un número') || mensaje.includes('ingresa un número')) return;
+    void this.mostrarToast(mensaje);
+  }
   actualizarEspecial(tipo: TipoDignidad, campo: 'nulos' | 'blancos', valor: number | null): void {
     this.especiales[tipo][campo] = valor;
+    this.ultimoCampoModificado = `especial-${tipo}-${campo}`;
     this.cambiosSinGuardar = true;
     this.mensaje = '';
+    this.notificarErrorDeCampo(`especial-${tipo}-${campo}`, this.errorEspecial(tipo, campo));
   }
-
   avisarEspecialAlSalir(tipo: TipoDignidad): void {
     const limite = this.limiteJunta;
     if (!this.consultado || limite === null || this.guardando) return;
@@ -218,7 +278,6 @@ export class RegistroPage implements OnInit {
       void this.mostrarToast(`${tipo}: con nulos y blancos registra ${this.totalDignidad(tipo)}; máximo ${limite}.`);
     }
   }
-
   private especialesParaGuardar(): CfEspeciales {
     return {
       ALCALDE: { nulos: Number(this.especiales.ALCALDE.nulos), blancos: Number(this.especiales.ALCALDE.blancos) },
@@ -226,7 +285,6 @@ export class RegistroPage implements OnInit {
       VOCAL: { nulos: Number(this.especiales.VOCAL.nulos), blancos: Number(this.especiales.VOCAL.blancos) }
     };
   }
-
   /** Muestra solo listas que realmente tengan candidatos en la API. */
   get listas(): ListaAgrupada[] {
     if (!this.ambito) return [];
@@ -246,7 +304,6 @@ export class RegistroPage implements OnInit {
       a.numero.localeCompare(b.numero, 'es', { numeric: true })
     );
   }
-
   get listasSinCandidato(): string[] {
     if (!this.ambito) return [];
     const presentes = new Set(this.concejales.map(c => this.numeroLista(c)));
@@ -254,15 +311,12 @@ export class RegistroPage implements OnInit {
       !!n && !presentes.has(n)
     );
   }
-
   get totalAlcaldes(): number {
     return this.sumar(this.alcaldes);
   }
-
   get totalConcejales(): number {
     return this.sumar(this.concejales);
   }
-
   /** Validar listas y nulos/blancos sin agregar mensajes al alto de la página. */
   get erroresValidacion(): string[] {
     if (!this.consultado || !this.junta) return [];
@@ -298,17 +352,14 @@ export class RegistroPage implements OnInit {
     }
     return errores;
   }
-
   get puedeGuardar(): boolean {
     return this.consultado && !this.guardando && !this.consultando && !this.registroFinalizado &&
       !!this.junta && this.alcaldes.length > 0 && this.concejales.length > 0 &&
       this.erroresValidacion.length === 0;
   }
-
   ngOnInit(): void {
     void this.cargar();
   }
-
   /** Notifica una sola vez: los mensajes no ocupan espacio dentro del formulario. */
   private async mostrarToast(
     texto: string,
@@ -320,7 +371,6 @@ export class RegistroPage implements OnInit {
     this.toastActual = null;
     if (anterior) await anterior.dismiss().catch(() => undefined);
     if (version !== this.toastVersion || this.destroyRef.destroyed) return;
-
     const toast = await this.toastController.create({
       message: texto,
       color,
@@ -338,17 +388,14 @@ export class RegistroPage implements OnInit {
       if (this.toastActual === toast) this.toastActual = null;
     });
   }
-
   /** Avisar solo al salir de un campo inválido, no por cada tecla pulsada. */
   avisarVotoAlSalir(id: number): void {
     if (!this.consultado || this.guardando) return;
     const candidato = this.candidatosActivos.find(c => Number(c.id) === Number(id));
     if (!candidato) return;
-
     const cantidad = this.votos[id];
     const limite = this.limiteJunta;
     const nombre = String(candidato.nombre ?? '').trim();
-
     if (typeof cantidad !== 'number' || !Number.isSafeInteger(cantidad) || cantidad < 0) {
       void this.mostrarToast(`${nombre}: ingresa votos enteros desde cero.`);
       return;
@@ -368,7 +415,6 @@ export class RegistroPage implements OnInit {
       }
     }
   }
-
   /** Identificador oficial; nunca se clasifica por nombre ni por parroquia. */
   private codigoDeJunta(j: CfJunta): number | null {
     // Si la API trae un código explícito, jamás sustituirlo por un ID interno.
@@ -379,12 +425,10 @@ export class RegistroPage implements OnInit {
     return Number.isSafeInteger(codigo) && RECINTOS_POR_CODIGO.has(codigo)
       ? codigo : null;
   }
-
   private normalizarNombre(valor: string): string {
     return String(valor).normalize('NFD').replace(/[\u0300-\u036f]/g, '')
       .toUpperCase().replace(/\s+/g, ' ').trim();
   }
-
   private normalizarCandidato(c: CfCandidato, eleccionId: number): CfCandidato {
     const previo = eleccionId === 1 ? CONCEJALES_LEGADOS[Number(c.id)] : undefined;
     const coincide = !!previo && c.tipo === 'CONCEJAL' &&
@@ -395,15 +439,12 @@ export class RegistroPage implements OnInit {
     const numero_lista = numeroActual || (coincide ? previo!.numero : null);
     return { ...c, ambito, numero_lista };
   }
-
   private numeroLista(c: CfCandidato): string {
     return String(c.numero_lista ?? '').trim().replace(/\s*[–—/]\s*/g, '-').replace(/\s+/g, '');
   }
-
   private actualizarVista(): void {
     if (!this.destroyRef.destroyed) this.cdr.detectChanges();
   }
-
   private descripcionError(error: unknown): string {
     if (error && typeof error === 'object') {
       const e = error as { error?: { message?: string }; message?: string };
@@ -412,18 +453,16 @@ export class RegistroPage implements OnInit {
     }
     return 'Error inesperado al registrar votos.';
   }
-
   private sumar(candidatos: CfCandidato[]): number {
     return candidatos.reduce((s, c) => s + (Number(this.votos[c.id]) || 0), 0);
   }
-
   private liberarFotoVista(): void {
     if (this.fotoUrl) URL.revokeObjectURL(this.fotoUrl);
     this.fotoUrl = null;
     this.fotoVista = null;
   }
-
   private limpiarFoto(): void {
+    this.detenerCamara();
     this.liberarFotoVista();
     this.fotoDisponible = false;
     this.fotoSeleccionada = null;
@@ -431,7 +470,6 @@ export class RegistroPage implements OnInit {
     this.procesandoFoto = false;
     this.subiendoFoto = false;
   }
-
   private async cargarFotoGuardada(id: number): Promise<void> {
     const resFoto = await this.api.obtenerFoto(id);
     if (this.juntaId !== id) return;
@@ -439,7 +477,6 @@ export class RegistroPage implements OnInit {
     this.fotoUrl = URL.createObjectURL(resFoto);
     this.fotoVista = this.sanitizer.bypassSecurityTrustUrl(this.fotoUrl);
   }
-
   /** Descarga la evidencia almacenada; funciona incluso si la junta ya se cerró. */
   async descargarActa(): Promise<void> {
     const id = this.juntaId;
@@ -472,29 +509,76 @@ export class RegistroPage implements OnInit {
       await this.mostrarToast(`No se pudo descargar el acta: ${this.descripcionError(e)}`);
     }
   }
-
-  /** Toma la foto o la selecciona, conservando todos los píxeles en PNG sin pérdida. */
-  async seleccionarFoto(evento: Event): Promise<void> {
-    if (this.registroFinalizado || this.guardando || this.consultando || this.procesandoFoto) return;
-    const input = evento.target;
-    if (!(input instanceof HTMLInputElement)) return;
-    const archivo = input.files?.item(0);
-    input.value = '';
-    if (!archivo) return;
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(archivo.type)) {
-      await this.mostrarToast('Selecciona una fotografía JPG, PNG o WebP que pueda convertirse a PNG.');
+  /** Abre únicamente la cámara. No permite elegir archivos de la galería. */
+  async abrirCamara(): Promise<void> {
+    if (this.guardando || this.registroFinalizado || this.consultando || this.camaraCargando) return;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      await this.mostrarToast('La cámara requiere HTTPS o localhost y permiso del dispositivo.');
+      return;
+    }
+    const juntaInicial = this.juntaId;
+    this.camaraCargando = true;
+    try {
+      this.detenerCamara();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+      });
+      if (this.destroyRef.destroyed || this.registroFinalizado || this.juntaId !== juntaInicial) {
+        stream.getTracks().forEach(track => track.stop());
+        return;
+      }
+      this.camaraStream = stream;
+      this.camaraActiva = true;
+      this.actualizarVista();
+      const video = this.videoCamara?.nativeElement;
+      if (!video) throw new Error('No se pudo activar la vista de la cámara.');
+      video.srcObject = stream;
+      await video.play();
+    } catch (e: unknown) {
+      this.detenerCamara();
+      await this.mostrarToast(`No se pudo abrir la cámara: ${this.descripcionError(e)}`);
+    } finally {
+      this.camaraCargando = false;
+      this.actualizarVista();
+    }
+  }
+  cerrarCamara(): void { this.detenerCamara(); }
+  private detenerCamara(): void {
+    const stream = this.camaraStream;
+    this.camaraStream = null;
+    stream?.getTracks().forEach(track => track.stop());
+    const video = this.videoCamara?.nativeElement;
+    if (video) video.srcObject = null;
+    this.camaraActiva = false;
+  }
+  /** Captura PNG en memoria para vista previa; NO llama a subirFoto ni a ninguna API. */
+  async capturarFotografia(): Promise<void> {
+    const video = this.videoCamara?.nativeElement;
+    if (!video || !this.camaraActiva || video.videoWidth < 1 || video.videoHeight < 1) {
+      await this.mostrarToast('La cámara todavía no muestra una imagen válida.');
       return;
     }
     this.procesandoFoto = true;
     try {
-      const resultado = await this.prepararFotografia(archivo);
-      // La imagen anterior no se reemplaza en MySQL hasta pulsar Guardar votos y fotografía.
-      this.fotoSeleccionada = resultado.archivo;
-      this.fotoResolucion = `${resultado.ancho} × ${resultado.alto} píxeles · PNG sin pérdida`;
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const contexto = canvas.getContext('2d', { alpha: false });
+      if (!contexto) throw new Error('No se pudo preparar la fotografía.');
+      contexto.drawImage(video, 0, 0);
+      const png = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+      canvas.width = 0;
+      canvas.height = 0;
+      if (!png || png.size < 512) throw new Error('La fotografía resultó vacía.');
+      const archivo = new File([png], 'acta-local.png', { type: 'image/png' });
       this.liberarFotoVista();
-      this.fotoUrl = URL.createObjectURL(resultado.archivo);
+      this.fotoSeleccionada = archivo;
+      this.fotoResolucion = `${video.videoWidth} × ${video.videoHeight} píxeles`;
+      this.fotoUrl = URL.createObjectURL(archivo);
       this.fotoVista = this.sanitizer.bypassSecurityTrustUrl(this.fotoUrl);
-      await this.mostrarToast('Acta PNG lista. Se guardará junto con los votos.', 'success');
+      this.detenerCamara();
+      await this.mostrarToast('Fotografía capturada: vista previa local, no enviada al servidor.', 'success');
     } catch (e: unknown) {
       await this.mostrarToast(this.descripcionError(e));
     } finally {
@@ -502,51 +586,22 @@ export class RegistroPage implements OnInit {
       this.actualizarVista();
     }
   }
-
-  /** Máxima resolución: nunca reducir dimensiones ni codificar en JPEG. */
-  private async prepararFotografia(archivo: File): Promise<{
-    archivo: File; ancho: number; alto: number;
-  }> {
-    const limite = 30 * 1024 * 1024; // Coincide con límite RAW de Express.
-    let imagen: ImageBitmap | null = null;
-    try {
-      imagen = await createImageBitmap(archivo);
-      const ancho = imagen.width;
-      const alto = imagen.height;
-      if (!ancho || !alto || ancho > 20000 || alto > 20000 || ancho * alto > 80000000) {
-        throw new Error('La imagen tiene dimensiones no compatibles. Toma otra foto del acta.');
-      }
-      let resultado: File;
-      if (archivo.type === 'image/png') {
-        // Mantener la información del PNG original byte por byte.
-        resultado = new File([archivo], 'acta.png', { type: 'image/png' });
-      } else {
-        const canvas = document.createElement('canvas');
-        canvas.width = ancho;
-        canvas.height = alto;
-        const contexto = canvas.getContext('2d', { alpha: false });
-        if (!contexto) throw new Error('No se pudo procesar la fotografía en este equipo.');
-        contexto.drawImage(imagen, 0, 0); // 1:1, sin reducir píxeles.
-        const png = await new Promise<Blob | null>(resolve => {
-          canvas.toBlob(resolve, 'image/png'); // PNG no usa un parámetro de calidad JPEG.
-        });
-        canvas.width = 0;
-        canvas.height = 0;
-        if (!png || png.type !== 'image/png') {
-          throw new Error('El navegador no pudo generar el acta PNG.');
-        }
-        resultado = new File([png], 'acta.png', { type: 'image/png' });
-      }
-      if (resultado.size > limite) {
-        throw new Error(`La foto PNG ocupa ${(resultado.size / 1048576).toFixed(1)} MB y supera 30 MB. Recorta los bordes fuera del acta y vuelve a tomar la foto. No se ha reducido su calidad.`);
-      }
-      if (resultado.size < 512) throw new Error('El archivo PNG está vacío o no es válido.');
-      return { archivo: resultado, ancho, alto };
-    } finally {
-      imagen?.close();
+  /** Descarga la captura local por decisión del usuario, sin enviar datos por la red. */
+  descargarFotoLocal(): void {
+    if (!this.fotoSeleccionada) return;
+    const url = URL.createObjectURL(this.fotoSeleccionada);
+    const enlace = document.createElement('a');
+    const numero = this.junta?.numero ?? 0;
+    enlace.href = url;
+    enlace.download = `acta_local_${this.codigoRecinto ?? 'recinto'}_${this.tipo ?? 'J'}${this.numeroJunta(Number(numero))}.png`;
+    enlace.style.display = 'none';
+    document.body.appendChild(enlace);
+    try { enlace.click(); }
+    finally {
+      enlace.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 2000);
     }
   }
-
   async finalizarJunta(): Promise<void> {
     if (!this.juntaId || this.guardando || this.registroFinalizado) return;
     if (this.cambiosSinGuardar) {
@@ -554,7 +609,7 @@ export class RegistroPage implements OnInit {
       return;
     }
     if (!this.registroExistente || !this.fotoDisponible || this.fotoSeleccionada) {
-      await this.mostrarToast('Guarda los votos y la fotografía antes de finalizar.');
+      await this.mostrarToast('Para finalizar, el servidor exige una foto guardada. La captura de esta pantalla es solo local y no se sube.');
       return;
     }
     if (this.erroresValidacion.length) {
@@ -580,7 +635,6 @@ export class RegistroPage implements OnInit {
       this.actualizarVista();
     }
   }
-
   private limpiarVotos(): void {
     this.votos = Object.fromEntries(this.candidatos.map(c => [Number(c.id), 0]));
     this.especiales = {
@@ -589,8 +643,9 @@ export class RegistroPage implements OnInit {
       VOCAL: { nulos: 0, blancos: 0 }
     };
   }
-
   private reiniciarJunta(): void {
+    this.camposConErrorNotificado.clear();
+    this.ultimoCampoModificado = null;
     this.consultaVersion += 1;
     this.juntaId = null;
     this.consultado = false;
@@ -604,20 +659,19 @@ export class RegistroPage implements OnInit {
     this.mensaje = '';
     this.limpiarVotos();
   }
-
   numeroJunta(numero: number): string {
     return String(numero).padStart(2, '0');
   }
-
   tieneJuntas(tipo: TipoJunta): boolean {
     return this.juntasRecinto.some(j => j.tipo === tipo);
   }
-
   /** Enter avanza al siguiente campo de votos sin guardar ni seleccionar listas. */
   irAlSiguienteVoto(evento: Event): void {
     evento.preventDefault();
     const actual = evento.target;
     if (!(actual instanceof HTMLInputElement)) return;
+    // No avanzar desde un voto inválido: el mensaje aparece junto al campo.
+    if (actual.classList.contains('voto-input--invalido')) return;
     const entradas = Array.from(document.querySelectorAll<HTMLInputElement>(
       '.contenedor-listas input.voto-input:not(:disabled)'
     ));
@@ -629,18 +683,18 @@ export class RegistroPage implements OnInit {
       document.querySelector<HTMLButtonElement>('.btn-guardar:not(:disabled)')?.focus();
     }
   }
-
   seleccionarContenido(evento: Event): void {
     const el = evento.target;
     if (el instanceof HTMLInputElement) el.select();
   }
-
   actualizarVoto(id: number, valor: number | null): void {
     this.votos[id] = valor;
+    this.ultimoCampoModificado = `voto-${id}`;
     this.cambiosSinGuardar = true;
     this.mensaje = '';
+    const candidato = this.candidatosActivos.find(c => Number(c.id) === Number(id));
+    if (candidato) this.notificarErrorDeCampo(`voto-${id}`, this.errorVoto(candidato));
   }
-
   async cargar(): Promise<void> {
     if (this.cargando || this.guardando) return;
     this.cargando = true;
@@ -672,7 +726,6 @@ export class RegistroPage implements OnInit {
       this.actualizarVista();
     }
   }
-
   seleccionarRecinto(valor: number | null): void {
     if (this.guardando) return;
     const codigo = valor === null ? null : Number(valor);
@@ -680,20 +733,17 @@ export class RegistroPage implements OnInit {
     this.tipo = null;
     this.reiniciarJunta();
   }
-
   seleccionarTipo(tipo: TipoJunta): void {
     if (this.guardando || !this.recinto || !this.tieneJuntas(tipo)) return;
     this.tipo = tipo;
     this.reiniciarJunta();
   }
-
   seleccionarJunta(id: number): void {
     if (this.guardando || !this.juntasDisponibles.some(j => j.id === Number(id))) return;
     this.reiniciarJunta();
     this.juntaId = Number(id);
     void this.consultarJunta();
   }
-
   async consultarJunta(): Promise<void> {
     if (!this.junta) return;
     const id = this.junta.id;
@@ -745,14 +795,12 @@ export class RegistroPage implements OnInit {
       }
     }
   }
-
   /** Verifica la suma por dignidad entre TODAS las juntas del mismo código de recinto. */
   private async validarTotalRecinto(detalle: DetalleVoto[], juntaActual: number): Promise<void> {
     if (!this.recinto || !this.ambito) throw new Error('Código de recinto inválido.');
     const electores = this.recinto.electores;
     const acumulado: Record<TipoDignidad, number> = { ALCALDE: 0, CONCEJAL: 0, VOCAL: 0 };
     const porId = new Map(this.candidatos.map(c => [Number(c.id), c]));
-
     for (const tipo of ['ALCALDE', 'CONCEJAL', 'VOCAL'] as const) {
       acumulado[tipo] += this.totalEspecial(tipo);
     }
@@ -764,7 +812,6 @@ export class RegistroPage implements OnInit {
       }
       acumulado[c.tipo] += voto.votos;
     }
-
     const otras = this.juntasRecinto.filter(j => Number(j.id) !== juntaActual);
     // Consultar en lotes para no saturar la API de ConteoFast.
     for (let i = 0; i < otras.length; i += 4) {
@@ -779,7 +826,6 @@ export class RegistroPage implements OnInit {
         this.acumularRegistro(registro, junta, porId, acumulado);
       }
     }
-
     if (acumulado.ALCALDE > electores) {
       throw new Error(`Recinto ${this.recinto.codigo}: ${acumulado.ALCALDE} votos de Alcaldía exceden los ${electores} electores registrados.`);
     }
@@ -790,7 +836,6 @@ export class RegistroPage implements OnInit {
       throw new Error(`Recinto ${this.recinto.codigo}: ${acumulado.VOCAL} votos de Vocales exceden los ${electores} electores registrados.`);
     }
   }
-
   private acumularRegistro(
     registro: CfRegistro, junta: CfJunta, catalogo: Map<number, CfCandidato>,
     acumulado: Record<TipoDignidad, number>
@@ -819,8 +864,7 @@ export class RegistroPage implements OnInit {
         Number(registro.especiales?.[tipo]?.blancos || 0);
     }
   }
-
-  /** Un solo botón: primero registra votos; después sube el PNG al mismo registro. */
+  /** Guarda exclusivamente los votos y especiales; jamás carga fotografías. */
   async guardar(): Promise<void> {
     if (this.guardando || this.consultando || this.procesandoFoto || !this.consultado) return;
     if (this.registroFinalizado) {
@@ -831,10 +875,6 @@ export class RegistroPage implements OnInit {
     this.mensaje = '';
     if (!this.junta || !this.recinto) {
       await this.mostrarToast('Selecciona un recinto y una junta válidos.');
-      return;
-    }
-    if (!this.fotoSeleccionada && !this.fotoDisponible) {
-      await this.mostrarToast('Toma o selecciona la fotografía del acta antes de guardar votos y foto.', 'warning');
       return;
     }
     if (!this.alcaldes.length || !this.concejales.length) {
@@ -850,8 +890,6 @@ export class RegistroPage implements OnInit {
       candidato_id: Number(c.id), votos: Number(this.votos[c.id])
     }));
     const juntaId = Number(this.junta.id);
-    const fotoPendiente = this.fotoSeleccionada;
-    let votosPersistidos = false;
     this.guardando = true;
     try {
       await this.validarTotalRecinto(detalle, juntaId);
@@ -860,42 +898,21 @@ export class RegistroPage implements OnInit {
         ? await this.api.actualizarRegistro(juntaId, detalle, especiales)
         : await this.api.guardarRegistro(juntaId, detalle, especiales);
       if (!res.ok) throw new Error(res.message || 'No se pudieron guardar los votos.');
-      votosPersistidos = true;
       this.registroExistente = true;
       this.cambiosSinGuardar = false;
-
-      if (fotoPendiente) {
-        this.subiendoFoto = true;
-        try {
-          const respuestaFoto = await this.api.subirFoto(juntaId, fotoPendiente);
-          if (!respuestaFoto.ok) {
-            throw new Error(respuestaFoto.message || 'No se pudo almacenar el PNG.');
-          }
-          this.fotoDisponible = true;
-          // Conservar la vista previa; eliminar únicamente el archivo pendiente.
-          if (this.fotoSeleccionada === fotoPendiente) this.fotoSeleccionada = null;
-        } finally {
-          this.subiendoFoto = false;
-        }
-      }
-
-      this.mensaje = fotoPendiente
-        ? 'Votos y fotografía PNG guardados correctamente.'
-        : 'Votos actualizados. Se conserva la fotografía del acta.';
+      this.mensaje = this.fotoSeleccionada
+        ? 'Votos guardados. La fotografía sigue solo en este equipo y no fue enviada.'
+        : 'Votos guardados correctamente. No se envió ninguna fotografía.';
       await this.mostrarToast(this.mensaje, 'success');
     } catch (e: unknown) {
-      const descripcion = this.descripcionError(e);
-      this.error = votosPersistidos
-        ? `Los votos sí se guardaron, pero la fotografía NO: ${descripcion}. Vuelve a pulsar Guardar votos y fotografía.`
-        : descripcion;
-      await this.mostrarToast(this.error, votosPersistidos ? 'warning' : 'danger');
+      this.error = this.descripcionError(e);
+      await this.mostrarToast(this.error);
     } finally {
       this.guardando = false;
       this.subiendoFoto = false;
       this.actualizarVista();
     }
   }
-
   async eliminar(): Promise<void> {
     if (!this.junta || !this.registroExistente || this.guardando) return;
     if (this.registroFinalizado) {
@@ -924,7 +941,6 @@ export class RegistroPage implements OnInit {
       this.actualizarVista();
     }
   }
-
   siguienteJunta(): void {
     if (!this.guardando) this.reiniciarJunta();
   }

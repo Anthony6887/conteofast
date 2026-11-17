@@ -14,7 +14,18 @@ export interface ResumenParroquia {
   juntas: number;
 }
 
+/** Totales de papeletas especiales por dignidad, calculados en el backend. */
+export type DignidadEspecial = 'ALCALDE' | 'URBANO' | 'RURAL' | 'VOCAL';
+export interface RegistroEspecial {
+  dignidad: DignidadEspecial;
+  nulos: number;
+  blancos: number;
+  /** false: no hay filas confirmadas que respalden un total. */
+  disponible: boolean;
+}
+
 export interface DashboardDatos {
+  especiales?: RegistroEspecial[];
   eleccion_id: number;
   juntas_confirmadas: number;
   juntas_total: number;
@@ -127,6 +138,17 @@ export function porcentaje(numerador: number, denominador: number): number {
   return Math.max(0, Math.min(100, (numerador / denominador) * 100));
 }
 
+
+export function porcentajeTexto(valor: number): string {
+  const porcentajeSeguro = Number.isFinite(valor)
+    ? Math.max(0, Math.min(100, valor))
+    : 0;
+
+  return `${new Intl.NumberFormat('es-EC', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(porcentajeSeguro)}%`;
+}
 
 
 export const BASE_PATH = '/conteofast';
