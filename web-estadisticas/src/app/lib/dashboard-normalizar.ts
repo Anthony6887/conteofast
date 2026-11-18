@@ -33,22 +33,18 @@ export function normalizarDashboard(respuesta: unknown): DashboardDatos {
 
   // Si el backend anterior no envía especiales, no fabricar ceros.
   const permitidas = new Set<DignidadEspecial>(['ALCALDE', 'URBANO', 'RURAL', 'VOCAL']);
-  const especiales: RegistroEspecial[] | undefined = noNegativo(bruto.juntas_confirmadas) === 0
-    ? (['ALCALDE', 'URBANO', 'RURAL', 'VOCAL'] as DignidadEspecial[]).map(dignidad => ({
-      dignidad, nulos: 0, blancos: 0, disponible: true,
-    }))
-    : Array.isArray(bruto.especiales)
-      ? bruto.especiales.filter(esObjeto).flatMap(item => {
-        const dignidad = String(item.dignidad ?? '').trim().toUpperCase() as DignidadEspecial;
-        if (!permitidas.has(dignidad)) return [];
-        return [{
-          dignidad,
-          nulos: noNegativo(item.nulos),
-          blancos: noNegativo(item.blancos),
-          disponible: item.disponible === true,
-        }];
-      })
-      : undefined;
+  const especiales: RegistroEspecial[] | undefined = Array.isArray(bruto.especiales)
+    ? bruto.especiales.filter(esObjeto).flatMap(item => {
+      const dignidad = String(item.dignidad ?? '').trim().toUpperCase() as DignidadEspecial;
+      if (!permitidas.has(dignidad)) return [];
+      return [{
+        dignidad,
+        nulos: noNegativo(item.nulos),
+        blancos: noNegativo(item.blancos),
+        disponible: item.disponible === true,
+      }];
+    })
+    : undefined;
 
   return {
     ...bruto,

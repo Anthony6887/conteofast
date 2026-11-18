@@ -14,8 +14,6 @@
 
 </ion-header>
 
-
-
 <ion-content [fullscreen]="true" class="registro-content">
 
   <main class="registro-container" [class.junta-finalizada]="registroFinalizado && consultado">
@@ -26,8 +24,6 @@
 
     }
 
-
-
     <section class="tarjeta seleccion" aria-label="Seleccionar recinto y junta">
 
       <div class="seccion-titulo">Recinto electoral</div>
@@ -35,6 +31,7 @@
       <label for="codigo-recinto">Nombre del recinto</label>
 
       <select id="codigo-recinto" name="codigo-recinto" [ngModel]="codigoRecinto"
+
         (ngModelChange)="seleccionarRecinto($event)" [disabled]="cargando || guardando || recintos.length === 0">
 
         <option [ngValue]="null">Seleccionar recinto</option>
@@ -47,8 +44,6 @@
 
       </select>
 
-
-
       @if (recinto; as r) {
 
       <div class="recinto-datos">
@@ -59,61 +54,53 @@
 
       </div>
 
-      <div class="seccion-titulo segunda">Tipo y número de junta</div>
+      <div class="seccion-titulo segunda">Dignidad electoral</div>
+
+      <div class="selector-dignidad" role="group" aria-label="Dignidad electoral">
+        @for (d of dignidadesDisponibles; track d.tipo) {
+        <button type="button" [class.activo]="dignidadSeleccionada === d.tipo"
+          [attr.aria-pressed]="dignidadSeleccionada === d.tipo" [disabled]="guardando"
+          (click)="seleccionarDignidad(d.tipo)">{{ d.titulo }}</button>
+        }
+      </div>
+
+      @if (dignidadSeleccionada) {
+      <div class="seccion-titulo segunda">Tipo de junta</div>
 
       <div class="selector-tipo" role="group" aria-label="Tipo de junta">
-
         <button type="button" [class.activo]="tipo === 'F'" [disabled]="guardando || !tieneJuntas('F')"
           [attr.aria-pressed]="tipo === 'F'" (click)="seleccionarTipo('F')">Femenina</button>
-
         <button type="button" [class.activo]="tipo === 'M'" [disabled]="guardando || !tieneJuntas('M')"
           [attr.aria-pressed]="tipo === 'M'" (click)="seleccionarTipo('M')">Masculina</button>
-
       </div>
-
       }
 
-
-
-      @if (tipo) {
-
+      @if (dignidadSeleccionada && tipo) {
+      <div class="seccion-titulo segunda">Número de junta</div>
       <div class="numeros-juntas" role="group" aria-label="Número de junta">
-
         @for (j of juntasDisponibles; track j.id) {
-
         <button type="button" class="boton-junta" [class.activo]="juntaId === j.id"
-          [class.bloqueada]="juntaEstaBloqueada(j)" [attr.aria-pressed]="juntaId === j.id" [attr.aria-label]="'Junta ' + numeroJunta(j.numero) +
-
-                (juntaEstaBloqueada(j) ? ', finalizada, solo lectura' : ', disponible para registro')"
+          [class.bloqueada]="juntaEstaBloqueada(j)" [attr.aria-pressed]="juntaId === j.id"
+          [attr.aria-label]="'Junta ' + numeroJunta(j.numero) + (juntaEstaBloqueada(j) ? ', finalizada, solo lectura' : ', disponible para registro')"
           [disabled]="guardando" (click)="seleccionarJunta(j.id)">
-
           <span class="junta-numero">{{ numeroJunta(j.numero) }}</span>
-
           @if (juntaEstaBloqueada(j)) {
-
           <span class="junta-candado" aria-hidden="true">🔒</span>
-
           }
-
         </button>
-
         }
-
       </div>
+      }
 
       }
 
     </section>
-
-
 
     @if (advertenciaCatalogo) {
 
     <p class="aviso" role="status">{{ advertenciaCatalogo }}</p>
 
     }
-
-
 
     @if (junta; as juntaActual) {
 
@@ -123,11 +110,7 @@
 
     }
 
-
-
     @if (consultado) {
-
-
 
     <section class="tarjeta contenedor-listas" aria-label="Ingreso directo de votos por lista">
 
@@ -135,7 +118,7 @@
 
         <div>
 
-          <h2>Registro de votos · {{ ambito === 'URBANO' ? 'Urbano' : 'Rural' }}</h2>
+          <h2>Registro de votos · {{ dignidadSeleccionada === 'ALCALDE' ? 'Alcalde' : dignidadSeleccionada === 'CONCEJAL' ? 'Concejales' : 'Vocales' }}</h2>
 
         </div>
 
@@ -143,26 +126,17 @@
 
       </div>
 
-      <div class="tabla-listas" [class.con-vocales]="ambito === 'RURAL'" role="table"
+      <div class="tabla-listas tabla-dignidad" role="table"
+
         aria-label="Votos por lista política">
 
         <div class="lista-columnas" role="row">
 
           <span role="columnheader">Lista</span>
 
-          <span role="columnheader">Alcaldía</span>
-
-          <span role="columnheader">Concejalía {{ ambito?.toLowerCase() }}</span>
-
-          @if (ambito === 'RURAL') {
-
-          <span role="columnheader">Vocales</span>
-
-          }
+          <span role="columnheader">{{ dignidadSeleccionada === 'ALCALDE' ? 'Alcaldía' : dignidadSeleccionada === 'CONCEJAL' ? 'Concejalía' : 'Vocales' }}</span>
 
         </div>
-
-
 
         @for (lista of listas; track lista.numero) {
 
@@ -176,8 +150,7 @@
 
           </div>
 
-
-
+          @if (dignidadSeleccionada === 'ALCALDE') {
           <div class="lista-celda alcaldia" role="cell">
 
             <span class="etiqueta-movil">Alcaldía</span>
@@ -189,17 +162,27 @@
               <label [for]="'voto-' + c.id">{{ c.nombre }}</label>
 
               <input class="voto-input" type="number" [id]="'voto-' + c.id" [name]="'voto-' + c.id" min="0"
+
                 [max]="limiteJunta" step="1" inputmode="numeric"
+
                 [attr.aria-label]="'Votos de Alcaldía, ' + c.nombre + ', lista ' + lista.numero" [ngModel]="votos[c.id]"
+
                 (ngModelChange)="actualizarVoto(c.id, $event)" [class.voto-input--invalido]="!!errorVoto(c)"
+
                 [attr.aria-invalid]="!!errorVoto(c)"
+
                 [attr.aria-describedby]="errorVoto(c) ? 'error-voto-' + c.id : null"
+
                 (focus)="seleccionarContenido($event)" (keydown.enter)="irAlSiguienteVoto($event)"
+
                 [disabled]="guardando || consultando || registroFinalizado" />
 
             </div>
+
             @if (errorVoto(c); as mensajeError) {
+
             <small class="voto-error" [id]="'error-voto-' + c.id" aria-live="polite">{{ mensajeError }}</small>
+
             }
 
             } @empty {
@@ -210,8 +193,8 @@
 
           </div>
 
-
-
+          }
+          @if (dignidadSeleccionada === 'CONCEJAL') {
           <div class="lista-celda concejalia" role="cell">
 
             <span class="etiqueta-movil">Concejalía {{ ambito?.toLowerCase() }}</span>
@@ -223,17 +206,27 @@
               <label [for]="'voto-' + c.id">{{ c.nombre }}</label>
 
               <input class="voto-input" type="number" [id]="'voto-' + c.id" [name]="'voto-' + c.id" min="0"
+
                 [max]="limiteJunta" step="1" inputmode="numeric"
+
                 [attr.aria-label]="'Votos de Concejalía ' + ambito?.toLowerCase() + ', ' + c.nombre + ', lista ' + lista.numero"
+
                 [ngModel]="votos[c.id]" (ngModelChange)="actualizarVoto(c.id, $event)"
+
                 [class.voto-input--invalido]="!!errorVoto(c)" [attr.aria-invalid]="!!errorVoto(c)"
+
                 [attr.aria-describedby]="errorVoto(c) ? 'error-voto-' + c.id : null"
+
                 (focus)="seleccionarContenido($event)" (keydown.enter)="irAlSiguienteVoto($event)"
+
                 [disabled]="guardando || consultando || registroFinalizado" />
 
             </div>
+
             @if (errorVoto(c); as mensajeError) {
+
             <small class="voto-error" [id]="'error-voto-' + c.id" aria-live="polite">{{ mensajeError }}</small>
+
             }
 
             } @empty {
@@ -244,9 +237,8 @@
 
           </div>
 
-
-
-          @if (ambito === 'RURAL') {
+          }
+          @if (dignidadSeleccionada === 'VOCAL' && ambito === 'RURAL') {
 
           <div class="lista-celda vocalia" [class.vocal-vacia]="lista.vocales.length === 0" role="cell">
 
@@ -259,17 +251,27 @@
               <label [for]="'voto-' + c.id">{{ c.nombre }}</label>
 
               <input class="voto-input" type="number" [id]="'voto-' + c.id" [name]="'voto-' + c.id" min="0"
+
                 [max]="limiteJunta" step="1" inputmode="numeric"
+
                 [attr.aria-label]="'Votos de Vocales, ' + c.nombre + ', lista ' + lista.numero" [ngModel]="votos[c.id]"
+
                 (ngModelChange)="actualizarVoto(c.id, $event)" [class.voto-input--invalido]="!!errorVoto(c)"
+
                 [attr.aria-invalid]="!!errorVoto(c)"
+
                 [attr.aria-describedby]="errorVoto(c) ? 'error-voto-' + c.id : null"
+
                 (focus)="seleccionarContenido($event)" (keydown.enter)="irAlSiguienteVoto($event)"
+
                 [disabled]="guardando || consultando || registroFinalizado" />
 
             </div>
+
             @if (errorVoto(c); as mensajeError) {
+
             <small class="voto-error" [id]="'error-voto-' + c.id" aria-live="polite">{{ mensajeError }}</small>
+
             }
 
             } @empty {
@@ -286,11 +288,9 @@
 
         }
 
-
-
       </div>
 
-      <!-- Sección separada, compacta y adaptable: no alarga la tabla de listas. -->
+      <!-- Votos especiales de la dignidad seleccionada. -->
 
       <section class="especiales-panel" aria-label="Votos nulos y en blanco por dignidad">
 
@@ -298,7 +298,7 @@
 
           <strong>Votos nulos y blancos</strong>
 
-          <small>Se suman al total de cada dignidad</small>
+          <small>De la dignidad seleccionada</small>
 
         </div>
 
@@ -317,16 +317,25 @@
                 <span>Nulos</span>
 
                 <input type="number" class="voto-input" min="0" [max]="limiteJunta" step="1" inputmode="numeric"
+
                   [id]="'especial-' + d.tipo + '-nulos'" [name]="d.tipo + '-nulos'" [ngModel]="especiales[d.tipo].nulos"
+
                   (ngModelChange)="actualizarEspecial(d.tipo, 'nulos', $event)"
+
                   [class.voto-input--invalido]="!!errorEspecial(d.tipo, 'nulos')"
+
                   [attr.aria-invalid]="!!errorEspecial(d.tipo, 'nulos')" (focus)="seleccionarContenido($event)"
+
                   (keydown.enter)="irAlSiguienteVoto($event)"
+
                   [disabled]="guardando || consultando || registroFinalizado" />
 
                 @if (errorEspecial(d.tipo, 'nulos'); as mensajeError) {
+
                 <small class="voto-error" aria-live="polite">{{ mensajeError }}</small>
+
                 }
+
               </label>
 
               <label [for]="'especial-' + d.tipo + '-blancos'">
@@ -334,16 +343,25 @@
                 <span>Blancos</span>
 
                 <input type="number" class="voto-input" min="0" [max]="limiteJunta" step="1" inputmode="numeric"
+
                   [id]="'especial-' + d.tipo + '-blancos'" [name]="d.tipo + '-blancos'"
+
                   [ngModel]="especiales[d.tipo].blancos" (ngModelChange)="actualizarEspecial(d.tipo, 'blancos', $event)"
+
                   [class.voto-input--invalido]="!!errorEspecial(d.tipo, 'blancos')"
+
                   [attr.aria-invalid]="!!errorEspecial(d.tipo, 'blancos')" (focus)="seleccionarContenido($event)"
+
                   (keydown.enter)="irAlSiguienteVoto($event)"
+
                   [disabled]="guardando || consultando || registroFinalizado" />
 
                 @if (errorEspecial(d.tipo, 'blancos'); as mensajeError) {
+
                 <small class="voto-error" aria-live="polite">{{ mensajeError }}</small>
+
                 }
+
               </label>
 
             </div>
@@ -356,13 +374,9 @@
 
       </section>
 
-
-
     </section>
 
-
-
-    @if (listasSinCandidato.length) {
+    @if (dignidadSeleccionada === 'CONCEJAL' && listasSinCandidato.length) {
 
     <p class="aviso" role="status">
 
@@ -374,95 +388,116 @@
 
     }
 
+    <section class="tarjeta acta-panel" aria-label="Cámara de acta por dignidad">
 
-
-    <section class="tarjeta acta-panel" aria-label="Cámara de acta, sin envío">
       <div class="acta-cabecera">
+
         <div>
+
           <h2>Fotografía del acta</h2>
+
         </div>
-        @if (fotoDisponible && !fotoSeleccionada) { <span class="acta-estado">Foto anterior en servidor</span> }
+
+        @if (fotoDisponible && !fotoSeleccionada) { <span class="acta-estado">Foto de esta dignidad guardada</span> }
+
         @if (fotoSeleccionada) { <span class="acta-estado pendiente">Solo en este dispositivo</span> }
+
       </div>
 
       @if (camaraActiva) {
+
       <div class="camara-contenedor">
+
         <video #camaraVideo class="camara-video" autoplay muted playsinline
+
           aria-label="Vista de cámara en directo"></video>
+
       </div>
+
       <div class="acta-acciones">
+
         <button type="button" class="btn-foto" (click)="capturarFotografia()" [disabled]="procesandoFoto">Capturar
+
           fotografía</button>
+
         <button type="button" class="btn-cerrar-camara" (click)="cerrarCamara()">Cerrar cámara</button>
+
       </div>
+
       }
 
       @if (fotoVista && !camaraActiva) {
+
       <img class="acta-previa" [src]="fotoVista" alt="Vista previa de fotografía del acta" />
+
       @if (fotoSeleccionada) {
-      <p class="aviso-foto-local">Captura de {{ fotoResolucion }}. Esta fotografía solo existe en la memoria de la
-        página y no se envía al servidor.</p>
+
+      <p class="aviso-foto-local">Captura PNG de {{ fotoResolucion }}.</p>
+
+      <button type="button" class="btn-subir-foto-servidor"
+        [disabled]="!dignidadGuardada || guardando || consultando || subiendoFoto || cambiosSinGuardar || registroFinalizado"
+        (click)="subirFotoServidor()">
+        {{ subiendoFoto ? 'Enviando fotografía...' : 'Reintentar envío de fotografía' }}
+      </button>
+
       <button type="button" class="btn-guardar-foto-local" (click)="descargarFotoLocal()">Guardar fotografía en mi
+
         dispositivo</button>
+
       }
+
       }
 
       @if (!registroFinalizado && !camaraActiva) {
+
       <div class="acta-acciones">
+
         <button type="button" class="btn-foto" (click)="abrirCamara()"
+
           [disabled]="guardando || consultando || procesandoFoto || camaraCargando">
+
           {{ camaraCargando ? 'Abriendo cámara…' : (fotoSeleccionada ? 'Tomar otra fotografía' : 'Abrir cámara') }}
+
         </button>
+
       </div>
+
       }
-      <p class="aviso-foto-local">Modo cámara únicamente. No permite subir archivos ni guarda la fotografía en MySQL.
-      </p>
+
+      <p class="aviso-foto-local">La fotografía se envía como PNG original al servidor después de guardar los votos.</p>
+
     </section>
 
     @if (!registroFinalizado) {
 
-    <div class="acciones">
-
-      <button class="btn-guardar" type="button"
-        [disabled]="guardando || consultando || procesandoFoto || !consultado || erroresValidacion.length > 0"
-        (click)="guardar()">
-
-        {{ guardando ? 'Guardando votos...' : 'Guardar votos' }}
-
-      </button>
-
-      @if (registroExistente) {
-
-      <button class="btn-eliminar" type="button" [disabled]="guardando" (click)="eliminar()">Eliminar</button>
-
+    <div class="acciones acciones-principales">
+      @if (!dignidadGuardada || cambiosSinGuardar) {
+        <button class="btn-guardar" type="button"
+          [disabled]="guardando || consultando || procesandoFoto || subiendoFoto || !consultado || erroresValidacion.length > 0"
+          (click)="guardar()">
+          {{ guardando ? 'Guardando votos...' : (dignidadGuardada ? 'Guardar cambios' : 'Guardar votos') }}
+        </button>
+      } @else {
+        <button class="btn-finalizar" type="button" (click)="finalizarJunta()"
+          [disabled]="guardando || consultando || subiendoFoto || procesandoFoto || !fotoDisponible || !!fotoSeleccionada || erroresValidacion.length > 0">
+          {{ guardando ? 'Finalizando...' : ('Finalizar y bloquear ' + (dignidadSeleccionada === 'ALCALDE' ? 'Alcalde' : dignidadSeleccionada === 'CONCEJAL' ? 'Concejales' : 'Vocales')) }}
+        </button>
       }
-
     </div>
 
-    @if (registroExistente && !fotoDisponible) {
-    <p class="aviso-cierre">El cierre de junta requiere una fotografía almacenada en el servidor. En este modo la cámara
-      no sube fotografías, por eso puedes guardar votos pero no finalizar la junta.</p>
-    }
-    @if (registroExistente) {
-
-    <button class="btn-finalizar" type="button" (click)="finalizarJunta()"
-      [disabled]="guardando || consultando || subiendoFoto || !fotoDisponible || !!fotoSeleccionada">
-
-      Finalizar y bloquear junta
-
-    </button>
-
+    @if (dignidadGuardada && !cambiosSinGuardar && !fotoDisponible) {
+      <p class="aviso-cierre" role="status">
+        {{ subiendoFoto ? 'Guardando fotografía en el servidor...' : 'Votos guardados. Captura y confirma la fotografía para activar el cierre.' }}
+      </p>
     }
 
     } @else {
 
-    <div class="accion-cerrada" role="status">🔒 Registro cerrado</div>
+    <div class="accion-cerrada" role="status">🔒 {{ dignidadSeleccionada === 'ALCALDE' ? 'Alcalde' : dignidadSeleccionada === 'CONCEJAL' ? 'Concejales' : 'Vocales' }} finalizado. Las otras dignidades siguen disponibles.</div>
 
     }
 
     }
-
-
 
     @if (!consultado && !consultando) {
 

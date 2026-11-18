@@ -11,6 +11,18 @@ export interface VotoJunta {
   votos: number;
 }
 export interface EspecialJunta { nulos: number; blancos: number }
+export interface EstadoDignidadActa {
+  guardado: boolean;
+  foto: boolean;
+  finalizado: boolean;
+  fecha_cierre?: string | null;
+}
+export interface EstadoDignidadActa {
+  guardado: boolean;
+  foto: boolean;
+  finalizado: boolean;
+  fecha_cierre?: string | null;
+}
 export interface RegistroActa {
   id: number;
   junta_id: number;
@@ -19,6 +31,8 @@ export interface RegistroActa {
   fecha_cierre?: string | null;
   votos: VotoJunta[];
   especiales: Partial<Record<TipoActa, EspecialJunta>>;
+  dignidades?: Partial<Record<TipoActa, EstadoDignidadActa>>;
+  dignidades?: Partial<Record<TipoActa, EstadoDignidadActa>>;
   evidencia?: {
     disponible: boolean;
     mime?: string;

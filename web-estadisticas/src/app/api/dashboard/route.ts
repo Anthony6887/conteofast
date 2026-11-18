@@ -12,7 +12,7 @@ export const runtime = 'nodejs';
 
 const HEADERS = {
   'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
-  'X-ConteoFast-Route': 'dashboard-candidatos-especiales-v5',
+  'X-ConteoFast-Route': 'dashboard-candidatos-especiales-v6',
 };
 
 type Objeto = Record<string, unknown>;
@@ -122,29 +122,24 @@ export async function GET() {
       total_votos: numeroSeguro(c.total_votos),
     }));
 
-    // Los nulos/blancos deben venir de /resumen, agregados desde
-    // cf_registro_especiales por el backend, NO desde candidatos.
-    // Ausencia del campo => interfaz muestra "sin datos", nunca un cero inventado.
+    // Nulos/blancos vienen de /resumen. Si el backend no los confirma,
+    // no se fabrican valores a partir del número de juntas.
     const dignidades = new Set(['ALCALDE', 'URBANO', 'RURAL', 'VOCAL']);
     // Sin ninguna junta confirmada, el total verificado de todas las
     // dignidades es cero. No es un dato inventado.
     const juntasConfirmadas = numeroSeguro(resumen.juntas_confirmadas);
-    const especiales = juntasConfirmadas === 0
-      ? ['ALCALDE', 'URBANO', 'RURAL', 'VOCAL'].map(dignidad => ({
-        dignidad, nulos: 0, blancos: 0, disponible: true,
-      }))
-      : Array.isArray(resumen.especiales)
-        ? resumen.especiales.filter(esObjeto).flatMap(item => {
-          const dignidad = String(item.dignidad ?? '').trim().toUpperCase();
-          if (!dignidades.has(dignidad)) return [];
-          return [{
-            dignidad,
-            nulos: numeroSeguro(item.nulos),
-            blancos: numeroSeguro(item.blancos),
-            disponible: item.disponible === true,
-          }];
-        })
-        : undefined;
+    const especiales = Array.isArray(resumen.especiales)
+      ? resumen.especiales.filter(esObjeto).flatMap(item => {
+        const dignidad = String(item.dignidad ?? '').trim().toUpperCase();
+        if (!dignidades.has(dignidad)) return [];
+        return [{
+          dignidad,
+          nulos: numeroSeguro(item.nulos),
+          blancos: numeroSeguro(item.blancos),
+          disponible: item.disponible === true,
+        }];
+      })
+      : undefined;
 
     const recintos = new Set<string>();
     const porParroquia = new Map<string, number>();

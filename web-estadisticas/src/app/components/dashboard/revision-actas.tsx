@@ -5,8 +5,8 @@ import Image from 'next/image';
 import type { CandidatoResultado } from '../../lib/electoral';
 import { BASE_PATH, numero } from '../../lib/electoral';
 import type { DatosRecintos, JuntaEstado, RecintoEstado } from '../../lib/recintos-estado';
-import { estaFinalizada, etiquetaJunta, tieneRegistro } from '../../lib/recintos-estado';
-import { construirResumenActa, type RegistroActa, type RespuestaRegistro } from '../../lib/revision-actas';
+import { estaFinalizada, etiquetaJunta } from '../../lib/recintos-estado';
+import { construirResumenActa, type TipoActa, type RegistroActa, type RespuestaRegistro } from '../../lib/revision-actas';
 import './revision-actas.css';
 
 type Props = {
@@ -40,7 +40,16 @@ function fotoDisponible(junta: JuntaEstado, indice: Record<string, EstadoFoto>):
   return estado === 'disponible' || (estado !== 'sin-foto' && junta.tiene_foto === true);
 }
 const rutaRegistro = (id: string) => `${BASE_PATH}/api/actas/junta/${encodeURIComponent(id)}`;
-const rutaFoto = (id: string) => `${BASE_PATH}/api/actas/foto/${encodeURIComponent(id)}`;
+const rutaFoto = (id: string, tipo?: TipoActa) =>
+  `${BASE_PATH}/api/actas/foto/${encodeURIComponent(id)}${tipo ? `?tipo=${tipo}` : ''}`;
+const tiposActa: TipoActa[] = ['ALCALDE', 'CONCEJAL', 'VOCAL'];
+function tiposConFoto(registro: RegistroActa | null): TipoActa[] {
+  if (!registro?.dignidades) return [];
+  return tiposActa.filter(tipo => registro.dignidades?.[tipo]?.foto === true);
+}
+function existeFoto(registro: RegistroActa | null): boolean {
+  return tiposConFoto(registro).length > 0 || registro?.evidencia?.disponible === true;
+}
 
 async function consultaRegistro(id: string, signal?: AbortSignal): Promise<RegistroActa | null> {
   const res = await fetch(rutaRegistro(id), { cache: 'no-store', signal });
@@ -68,6 +77,7 @@ function PanelDetalle({ recinto, junta, candidatos, onFoto }: {
   const [ampliar, setAmpliar] = useState(false);
   const [errorImagen, setErrorImagen] = useState(false);
   const [actualizar, setActualizar] = useState(0);
+  const [tipoElegido, setTipoElegido] = useState<TipoActa | null>(null);
 
   // PanelDetalle se monta con key={junta.id}; cada junta comienza
   // con su propio estado inicial. El efecto solo recibe respuestas asíncronas.
@@ -78,7 +88,7 @@ function PanelDetalle({ recinto, junta, candidatos, onFoto }: {
       .then(resultado => {
         if (ctrl.signal.aborted) return;
         setRegistro(resultado);
-        onFoto(junta.id, resultado?.evidencia?.disponible ? 'disponible' : 'sin-foto');
+        onFoto(junta.id, existeFoto(resultado) ? 'disponible' : 'sin-foto');
       })
       .catch(e => {
         if (!ctrl.signal.aborted) {
@@ -112,8 +122,11 @@ function PanelDetalle({ recinto, junta, candidatos, onFoto }: {
     ? ([934, 852, 1110, 1678, 6507, 7917, 5355].includes(Number(recinto.codigo_recinto)) ? 'URBANO' : 'RURAL')
     : (['PELILEO', 'PELILEO GRANDE /R. MINO'].includes(recinto.parroquia.trim().toUpperCase()) ? 'URBANO' : 'RURAL');
   const resumenes = registro ? construirResumenActa(registro, candidatos, ambito) : [];
-  const tieneFoto = Boolean(registro?.evidencia?.disponible) && !errorImagen;
-  const foto = rutaFoto(junta.id);
+  const disponibles = tiposConFoto(registro);
+  const tipoActivo = tipoElegido && disponibles.includes(tipoElegido) ? tipoElegido : disponibles[0] ?? null;
+  const tieneFoto = (tipoActivo !== null || registro?.evidencia?.disponible === true) && !errorImagen;
+  const foto = rutaFoto(junta.id, tipoActivo ?? undefined);
+  const resumenActivo = tipoActivo ? resumenes.find(r => r.tipo === tipoActivo) : null;
 
   return (
     <article className="ar-detalle" aria-live="polite">
@@ -132,6 +145,18 @@ function PanelDetalle({ recinto, junta, candidatos, onFoto }: {
       {error && <div className="ar-alerta" role="alert">{error}<button type="button" onClick={reintentar}>Reintentar</button></div>}
       {!cargando && !error && !registro && <p className="ar-mensaje">Esta junta aún no tiene votos registrados ni acta asociada.</p>}
       {registro && <>
+        {disponibles.length > 0 && <div className="ar-juntas-botones" role="group" aria-label="Dignidad del acta">
+          {disponibles.map(tipo => <button type="button" key={tipo} aria-pressed={tipoActivo === tipo}
+            className={`ar-junta-boton ${tipoActivo === tipo ? 'ar-junta-boton--activo' : ''}`}
+            onClick={() => { setTipoElegido(tipo); setErrorImagen(false); setAmpliar(false); }}>
+            {tipo === 'ALCALDE' ? 'Alcalde' : tipo === 'CONCEJAL' ? 'Concejales' : 'Vocales'}
+            {registro.dignidades?.[tipo]?.finalizado ? ' 🔒' : ' 📷'}
+          </button>)}
+        </div>}
+        {resumenActivo && <div className="ar-acta" aria-label="Totales de la dignidad seleccionada">
+          <strong>{resumenActivo.titulo}</strong>
+          <p>Válidos: {resumenActivo.validos} · Nulos: {resumenActivo.nulos} · Blancos: {resumenActivo.blancos} · Total: {resumenActivo.total}</p>
+        </div>}
         <div className="ar-acta">
           <div className="ar-titulo-foto">
             <div><strong>Fotografía del acta</strong><small>Consulta del archivo original almacenado en ConteoFast</small></div>
@@ -143,7 +168,7 @@ function PanelDetalle({ recinto, junta, candidatos, onFoto }: {
                 className="ar-foto" onError={() => setErrorImagen(true)} />
               <span>Ampliar fotografía</span>
             </button>
-            <a className="ar-descarga" href={`${foto}?descargar=1`} download={`acta_junta_${junta.id}.png`}>Descargar acta</a>
+            <a className="ar-descarga" href={`${foto}${foto.includes('?') ? '&' : '?'}descargar=1`} download={`acta_junta_${junta.id}${tipoActivo ? `_${tipoActivo}` : ''}.png`}>Descargar acta</a>
           </> : <div className="ar-foto-vacia">📷 <span>No hay una fotografía disponible para consultar.</span></div>}
         </div>
 
@@ -175,8 +200,10 @@ export default function RevisionActas({ datos, candidatos, cargando, error, onAc
     setFotos(prev => prev[id] === disponible ? prev : { ...prev, [id]: disponible });
   }, []);
 
+  // Incluir todas las juntas: el estado legado puede figurar PENDIENTE
+  // aunque una dignidad haya sido guardada mediante la API nueva.
   const juntasConRegistro = useMemo(() => (datos?.recintos || [])
-    .flatMap(r => r.juntas).filter(tieneRegistro).map(j => j.id).sort(), [datos]);
+    .flatMap(r => r.juntas).map(j => j.id).sort(), [datos]);
   const idsRevision = juntasConRegistro.join('|');
 
   // Índice ligero de fotografías: solo consulta el JSON de cada junta, nunca el PNG.
@@ -205,7 +232,7 @@ export default function RevisionActas({ datos, candidatos, cargando, error, onAc
           try {
             const resultado = await consultaRegistro(id, ctrl.signal);
             if (!ctrl.signal.aborted) {
-              onFoto(id, resultado?.evidencia?.disponible ? 'disponible' : 'sin-foto');
+              onFoto(id, existeFoto(resultado) ? 'disponible' : 'sin-foto');
             }
           } catch {
             // Un fallo de red no significa que la junta carezca de fotografía.

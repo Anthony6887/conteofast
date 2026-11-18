@@ -11,9 +11,15 @@ export async function GET(request: Request, contexto: { params: Promise<{ juntaI
   if (!validarIdJunta(juntaId)) {
     return NextResponse.json({ ok: false, message: 'ID de junta inválido.' }, { status: 400, headers: CABECERAS_PRIVADAS });
   }
-  const descargar = new URL(request.url).searchParams.get('descargar') === '1';
+  const parametros = new URL(request.url).searchParams;
+  const descargar = parametros.get('descargar') === '1';
+  const tipo = parametros.get('tipo')?.toUpperCase() ?? null;
+  if (tipo && !['ALCALDE', 'CONCEJAL', 'VOCAL'].includes(tipo)) {
+    return NextResponse.json({ ok: false, message: 'Dignidad inválida.' },
+      { status: 400, headers: CABECERAS_PRIVADAS });
+  }
   try {
-    const endpoint = `registro/${juntaId}/foto${descargar ? '/descargar' : ''}`;
+    const endpoint = tipo ? `registro/${juntaId}/dignidad/${tipo}/foto` : `registro/${juntaId}/foto${descargar ? '/descargar' : ''}`;
     const backend = await fetch(urlApiConteoFast(endpoint), {
       cache: 'no-store', signal: AbortSignal.timeout(20000),
     });
@@ -33,7 +39,7 @@ export async function GET(request: Request, contexto: { params: Promise<{ juntaI
     const ext = mime === 'image/png' ? 'png' : mime === 'image/jpeg' ? 'jpg' : 'webp';
     const headers = new Headers(CABECERAS_PRIVADAS);
     headers.set('Content-Type', mime);
-    headers.set('Content-Disposition', `${descargar ? 'attachment' : 'inline'}; filename="acta_junta_${juntaId}.${ext}"`);
+    headers.set('Content-Disposition', `${descargar ? 'attachment' : 'inline'}; filename="acta_junta_${juntaId}${tipo ? `_${tipo}` : ''}.${ext}"`);
     const tamaño = backend.headers.get('content-length');
     if (tamaño && /^\d+$/.test(tamaño)) headers.set('Content-Length', tamaño);
     return new Response(backend.body, { status: 200, headers });
