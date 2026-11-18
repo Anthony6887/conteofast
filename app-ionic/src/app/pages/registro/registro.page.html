@@ -57,39 +57,67 @@
       <div class="seccion-titulo segunda">Dignidad electoral</div>
 
       <div class="selector-dignidad" role="group" aria-label="Dignidad electoral">
+
         @for (d of dignidadesDisponibles; track d.tipo) {
+
         <button type="button" [class.activo]="dignidadSeleccionada === d.tipo"
+
           [attr.aria-pressed]="dignidadSeleccionada === d.tipo" [disabled]="guardando"
+
           (click)="seleccionarDignidad(d.tipo)">{{ d.titulo }}</button>
+
         }
+
       </div>
 
       @if (dignidadSeleccionada) {
+
       <div class="seccion-titulo segunda">Tipo de junta</div>
 
       <div class="selector-tipo" role="group" aria-label="Tipo de junta">
+
         <button type="button" [class.activo]="tipo === 'F'" [disabled]="guardando || !tieneJuntas('F')"
+
           [attr.aria-pressed]="tipo === 'F'" (click)="seleccionarTipo('F')">Femenina</button>
+
         <button type="button" [class.activo]="tipo === 'M'" [disabled]="guardando || !tieneJuntas('M')"
+
           [attr.aria-pressed]="tipo === 'M'" (click)="seleccionarTipo('M')">Masculina</button>
+
       </div>
+
       }
 
       @if (dignidadSeleccionada && tipo) {
+
       <div class="seccion-titulo segunda">Número de junta</div>
+
       <div class="numeros-juntas" role="group" aria-label="Número de junta">
+
         @for (j of juntasDisponibles; track j.id) {
+
         <button type="button" class="boton-junta" [class.activo]="juntaId === j.id"
+
           [class.bloqueada]="juntaEstaBloqueada(j)" [attr.aria-pressed]="juntaId === j.id"
+
           [attr.aria-label]="'Junta ' + numeroJunta(j.numero) + (juntaEstaBloqueada(j) ? ', finalizada, solo lectura' : ', disponible para registro')"
+
           [disabled]="guardando" (click)="seleccionarJunta(j.id)">
+
           <span class="junta-numero">{{ numeroJunta(j.numero) }}</span>
+
           @if (juntaEstaBloqueada(j)) {
+
           <span class="junta-candado" aria-hidden="true">🔒</span>
+
           }
+
         </button>
+
         }
+
       </div>
+
       }
 
       }
@@ -151,6 +179,7 @@
           </div>
 
           @if (dignidadSeleccionada === 'ALCALDE') {
+
           <div class="lista-celda alcaldia" role="cell">
 
             <span class="etiqueta-movil">Alcaldía</span>
@@ -194,7 +223,9 @@
           </div>
 
           }
+
           @if (dignidadSeleccionada === 'CONCEJAL') {
+
           <div class="lista-celda concejalia" role="cell">
 
             <span class="etiqueta-movil">Concejalía {{ ambito?.toLowerCase() }}</span>
@@ -238,6 +269,7 @@
           </div>
 
           }
+
           @if (dignidadSeleccionada === 'VOCAL' && ambito === 'RURAL') {
 
           <div class="lista-celda vocalia" [class.vocal-vacia]="lista.vocales.length === 0" role="cell">
@@ -388,107 +420,90 @@
 
     }
 
-    <section class="tarjeta acta-panel" aria-label="Cámara de acta por dignidad">
-
+    <!-- Sin previsualización grande: un único botón de estado / acción de foto. -->
+    <section class="tarjeta acta-panel acta-panel--compacta" aria-label="Fotografía del acta">
       <div class="acta-cabecera">
-
-        <div>
-
-          <h2>Fotografía del acta</h2>
-
-        </div>
-
-        @if (fotoDisponible && !fotoSeleccionada) { <span class="acta-estado">Foto de esta dignidad guardada</span> }
-
-        @if (fotoSeleccionada) { <span class="acta-estado pendiente">Solo en este dispositivo</span> }
-
+        <h2>Fotografía del acta</h2>
       </div>
 
-      @if (camaraActiva) {
-
-      <div class="camara-contenedor">
-
-        <video #camaraVideo class="camara-video" autoplay muted playsinline
-
-          aria-label="Vista de cámara en directo"></video>
-
-      </div>
-
-      <div class="acta-acciones">
-
-        <button type="button" class="btn-foto" (click)="capturarFotografia()" [disabled]="procesandoFoto">Capturar
-
-          fotografía</button>
-
-        <button type="button" class="btn-cerrar-camara" (click)="cerrarCamara()">Cerrar cámara</button>
-
-      </div>
-
-      }
-
-      @if (fotoVista && !camaraActiva) {
-
-      <img class="acta-previa" [src]="fotoVista" alt="Vista previa de fotografía del acta" />
-
-      @if (fotoSeleccionada) {
-
-      <p class="aviso-foto-local">Captura PNG de {{ fotoResolucion }}.</p>
-
-      <button type="button" class="btn-subir-foto-servidor"
-        [disabled]="!dignidadGuardada || guardando || consultando || subiendoFoto || cambiosSinGuardar || registroFinalizado"
-        (click)="subirFotoServidor()">
-        {{ subiendoFoto ? 'Enviando fotografía...' : 'Reintentar envío de fotografía' }}
+      <button
+        type="button"
+        class="btn-estado-fotografia"
+        [class.fotografia-confirmada]="fotoDisponible && !fotoSeleccionada"
+        [class.fotografia-pendiente]="!!fotoSeleccionada"
+        [disabled]="guardando || consultando || subiendoFoto || procesandoFoto || camaraCargando || registroFinalizado"
+        (click)="accionFotografia()"
+      >
+        @if (subiendoFoto) {
+          <span class="foto-simbolo" aria-hidden="true">↻</span>
+          <span class="foto-titulo">Enviando fotografía...</span>
+        } @else if (fotoSeleccionada) {
+          <span class="foto-simbolo" aria-hidden="true">✓</span>
+          <span class="foto-titulo">Fotografía tomada</span>
+          <small>{{ dignidadGuardada && !cambiosSinGuardar ? 'Tocar para reintentar el envío' : 'Se enviará al guardar los votos' }}</small>
+        } @else if (fotoDisponible) {
+          <span class="foto-simbolo" aria-hidden="true">✓</span>
+          <span class="foto-titulo">Fotografía tomada y guardada</span>
+          @if (!registroFinalizado) {
+            <small>Tocar para tomar otra fotografía</small>
+          }
+        } @else {
+          <span class="foto-simbolo" aria-hidden="true">📷</span>
+          <span class="foto-titulo">Abrir cámara del dispositivo</span>
+        }
       </button>
 
-      <button type="button" class="btn-guardar-foto-local" (click)="descargarFotoLocal()">Guardar fotografía en mi
-
-        dispositivo</button>
-
-      }
-
-      }
-
-      @if (!registroFinalizado && !camaraActiva) {
-
-      <div class="acta-acciones">
-
-        <button type="button" class="btn-foto" (click)="abrirCamara()"
-
-          [disabled]="guardando || consultando || procesandoFoto || camaraCargando">
-
-          {{ camaraCargando ? 'Abriendo cámara…' : (fotoSeleccionada ? 'Tomar otra fotografía' : 'Abrir cámara') }}
-
+      @if (fotoSeleccionada || fotoDisponible) {
+        <button
+          type="button"
+          class="btn-ver-fotografia"
+          [disabled]="vistaPreviaCargando"
+          (click)="verFotografia()"
+          aria-label="Ver fotografía del acta"
+        >
+          <span aria-hidden="true">◉</span> Ver fotografía
         </button>
-
-      </div>
-
       }
-
-      <p class="aviso-foto-local">La fotografía se envía como PNG original al servidor después de guardar los votos.</p>
-
     </section>
 
     @if (!registroFinalizado) {
 
     <div class="acciones acciones-principales">
+
       @if (!dignidadGuardada || cambiosSinGuardar) {
+
         <button class="btn-guardar" type="button"
+
           [disabled]="guardando || consultando || procesandoFoto || subiendoFoto || !consultado || erroresValidacion.length > 0"
+
           (click)="guardar()">
+
           {{ guardando ? 'Guardando votos...' : (dignidadGuardada ? 'Guardar cambios' : 'Guardar votos') }}
+
         </button>
+
       } @else {
+
         <button class="btn-finalizar" type="button" (click)="finalizarJunta()"
+
           [disabled]="guardando || consultando || subiendoFoto || procesandoFoto || !fotoDisponible || !!fotoSeleccionada || erroresValidacion.length > 0">
+
           {{ guardando ? 'Finalizando...' : ('Finalizar y bloquear ' + (dignidadSeleccionada === 'ALCALDE' ? 'Alcalde' : dignidadSeleccionada === 'CONCEJAL' ? 'Concejales' : 'Vocales')) }}
+
         </button>
+
       }
+
     </div>
 
     @if (dignidadGuardada && !cambiosSinGuardar && !fotoDisponible) {
+
       <p class="aviso-cierre" role="status">
+
         {{ subiendoFoto ? 'Guardando fotografía en el servidor...' : 'Votos guardados. Captura y confirma la fotografía para activar el cierre.' }}
+
       </p>
+
     }
 
     } @else {
@@ -520,3 +535,62 @@
   </main>
 
 </ion-content>
+
+<!-- Visor de cámara a pantalla completa, fuera del contenedor con scroll. -->
+@if (camaraActiva) {
+  <div class="camara-pantalla" role="dialog" aria-modal="true" aria-label="Cámara del acta">
+    <video
+      #camaraVideo
+      class="camara-pantalla-video"
+      autoplay
+      muted
+      playsinline
+      aria-label="Cámara en directo"
+    ></video>
+
+    <div class="camara-pantalla-superior">
+      <button type="button" class="camara-pantalla-cerrar" (click)="cerrarCamara()">
+        ✕ Cerrar
+      </button>
+      <span class="camara-pantalla-titulo">
+        {{ dignidadSeleccionada === 'ALCALDE' ? 'Alcalde' : dignidadSeleccionada === 'CONCEJAL' ? 'Concejales' : 'Vocales' }}
+      </span>
+    </div>
+
+    <div class="camara-pantalla-inferior">
+      <div class="camara-pantalla-indicacion">Coloca el acta dentro de la imagen</div>
+      <button
+        type="button"
+        class="camara-pantalla-disparar"
+        [disabled]="procesandoFoto"
+        (click)="capturarFotografia()"
+        aria-label="Tomar fotografía del acta"
+      >
+        <span aria-hidden="true"></span>
+      </button>
+      <div class="camara-pantalla-ayuda">
+        {{ procesandoFoto ? 'Procesando fotografía...' : 'Tomar fotografía' }}
+      </div>
+    </div>
+  </div>
+}
+
+
+<!-- Vista previa solo al pulsar Ver fotografía: no ocupa espacio en el formulario. -->
+@if (vistaPreviaAbierta) {
+  <div class="visor-fotografia" role="dialog" aria-modal="true" aria-label="Vista previa del acta">
+    <div class="visor-fotografia-barra">
+      <strong>Vista previa del acta</strong>
+      <button type="button" (click)="cerrarVistaPrevia()" aria-label="Cerrar vista previa">
+        ✕ Cerrar
+      </button>
+    </div>
+    <div class="visor-fotografia-contenido">
+      @if (vistaPreviaSrc) {
+        <img [src]="vistaPreviaSrc" alt="Fotografía completa del acta de la dignidad seleccionada" />
+      } @else {
+        <p role="status">Cargando fotografía...</p>
+      }
+    </div>
+  </div>
+}

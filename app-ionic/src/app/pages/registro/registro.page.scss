@@ -433,7 +433,6 @@ input:focus-visible {
 }
 
 /* Registro directo: todas las listas y campos visibles, sin pulsar botones. */
-
 .contenedor-listas {
 
   padding: 15px;
@@ -981,7 +980,6 @@ input:focus-visible {
 }
 
 /* Mantener espacio seguro bajo los botones en móviles. */
-
 @media (max-width: 600px) {
 
   .espacio-inferior {
@@ -993,7 +991,6 @@ input:focus-visible {
 }
 
 /* Tercera dignidad: únicamente en juntas rurales. */
-
 .tabla-listas.con-vocales .lista-columnas,
 
 .tabla-listas.con-vocales .lista-fila {
@@ -1031,7 +1028,6 @@ input:focus-visible {
   }
 
   /* No agregar una fila visual inútil para listas sin vocales. */
-
   .tabla-listas.con-vocales .lista-celda.vocalia.vocal-vacia {
 
     display: none;
@@ -1051,7 +1047,6 @@ input:focus-visible {
 }
 
 /* Nulos y blancos: dos filas compactas al final de la tabla. */
-
 .lista-fila-especial {
 
   background: #edf4fe !important;
@@ -1139,7 +1134,6 @@ input:focus-visible {
 }
 
 /* ---- Nulos y blancos: tarjetas compactas, dos campos por dignidad ---- */
-
 .especiales-panel {
 
   margin-top: 14px;
@@ -1319,7 +1313,6 @@ input:focus-visible {
 }
 
 /* ---- Evidencia fotográfica y cierre ---- */
-
 .estado-finalizado {
 
   display: flex;
@@ -1585,7 +1578,6 @@ input:focus-visible {
 }
 
 /* Guardado conjunto y foto PNG: indicador compacto, legible en móvil */
-
 .acta-estado.pendiente {
 
   background: #fff2d7;
@@ -1652,15 +1644,7 @@ input:focus-visible {
 
 }
 
-/* ================================================================*
-
- *   CONTEOFAST: BLOQUEO VISUAL + DESCARGA PNG + RESPONSIVE
-
- *   La selección de recinto y junta sigue habilitada para consultar.
-
- *   Los datos cerrados se vuelven grises; la foto permanece nítida.
-
-*   ================================================================ */
+/* Estilos de bloqueo visual y descarga PNG. */
 
 :host {
 
@@ -1885,7 +1869,6 @@ input:focus-visible {
   filter: none;
 
   /* la fotografía se consulta en su calidad original */
-
 }
 
 .registro-container.junta-finalizada .accion-cerrada {
@@ -2173,7 +2156,6 @@ input:focus-visible {
 }
 
 /* Candados por junta finalizada: se pueden pulsar para consultar. */
-
 .numeros-juntas .boton-junta {
 
   position: relative;
@@ -2336,84 +2318,426 @@ input:focus-visible {
 
 /* Dignidad electoral: selección previa en móviles y escritorio */
 .selector-dignidad {
+
   display: grid;
+
   grid-template-columns: repeat(3, minmax(0, 1fr));
+
   gap: 7px;
+
 }
+
 .selector-dignidad button {
+
   min-width: 0;
+
   min-height: 43px;
+
   padding: 8px 5px;
+
   border: 1px solid #c6d8eb;
+
   border-radius: 9px;
+
   background: #f7faff;
+
   color: var(--azul);
+
   font-size: 12px;
+
   font-weight: 800;
+
 }
+
 .selector-dignidad button.activo {
+
   color: #fff;
+
   border-color: var(--azul);
+
   background: var(--azul);
+
 }
+
 .selector-dignidad button:focus-visible {
+
   outline: 3px solid #7ba8eb;
+
   outline-offset: 2px;
+
 }
+
 /* Una columna de candidatos por lista, sin scroll lateral */
 .tabla-dignidad .lista-columnas,
+
 .tabla-dignidad .lista-fila {
+
   display: grid;
+
   grid-template-columns: minmax(52px, 75px) minmax(0, 1fr);
+
 }
+
 .tabla-dignidad .lista-celda {
+
   grid-column: 2;
+
 }
+
 @media (max-width: 700px) {
+
   .tabla-dignidad .lista-fila {
+
     grid-template-columns: 54px minmax(0, 1fr);
+
   }
+
   .tabla-dignidad .lista-identificador {
+
     grid-row: 1;
+
   }
+
   .tabla-dignidad .lista-columnas {
+
     display: none;
+
   }
+
   .tabla-dignidad .lista-celda {
+
     padding: 9px 10px;
+
   }
+
 }
+
 @media (max-width: 380px) {
+
   .selector-dignidad { gap: 5px; }
+
   .selector-dignidad button { font-size: 11px; padding: 8px 3px; }
+
   .tabla-dignidad .lista-fila { grid-template-columns: 46px minmax(0, 1fr); }
+
 }
 
 /* Subida de fotografía: acción principal una vez guardados los votos */
 .btn-subir-foto-servidor {
+
   display: block;
+
   width: 100%;
+
   min-height: 44px;
+
   padding: 10px 12px;
+
   margin: 9px 0;
+
   border: 0;
+
   border-radius: 9px;
+
   background: #153d70;
+
   color: #fff;
+
   font-size: 12px;
+
   font-weight: 800;
+
 }
+
 .btn-subir-foto-servidor:disabled { opacity: .55; cursor: not-allowed; }
 
 /* Acción única: Guardar -> Finalizar, siempre en el mismo lugar */
 .acciones-principales {
+
   display: flex;
+
   width: 100%;
+
   margin-top: 12px;
+
 }
+
 .acciones-principales > button {
+
   flex: 1 1 100%;
+
   width: 100%;
+
   min-height: 48px;
+
   margin: 0;
+
+}
+
+/* ===== Cámara ConteoFast: pantalla completa ===== */
+.acta-panel--compacta {
+  padding: 12px;
+}
+
+.acta-panel--compacta .acta-cabecera {
+  margin-bottom: 10px;
+}
+
+.btn-estado-fotografia {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+  min-height: 53px;
+  padding: 10px 12px;
+  border: 1px solid #c5d6ec;
+  border-radius: 10px;
+  background: #f1f6ff;
+  color: #153d70;
+  text-align: center;
+  font-weight: 800;
+}
+
+.btn-estado-fotografia .foto-simbolo {
+  font-size: 19px;
+  line-height: 1;
+}
+
+.btn-estado-fotografia .foto-titulo {
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.btn-estado-fotografia small {
+  color: #687d92;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.btn-estado-fotografia.fotografia-confirmada {
+  background: #e7f6ea;
+  border-color: #a7d5b5;
+  color: #1f6b3d;
+}
+
+.btn-estado-fotografia.fotografia-pendiente {
+  background: #fff6e4;
+  border-color: #e4c88b;
+  color: #84530a;
+}
+
+.btn-estado-fotografia:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.camara-pantalla {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: block;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  background: #090909;
+  color: #fff;
+  touch-action: manipulation;
+}
+
+.camara-pantalla-video {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+}
+
+.camara-pantalla-superior {
+  position: absolute;
+  z-index: 2;
+  inset: 0 0 auto 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 15px 12px;
+  background: linear-gradient(to bottom, rgba(0,0,0,.76), rgba(0,0,0,0));
+}
+
+.camara-pantalla-cerrar {
+  min-height: 44px;
+  padding: 10px 15px;
+  border: 1px solid rgba(255,255,255,.35);
+  border-radius: 24px;
+  background: rgba(0,0,0,.5);
+  color: white;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.camara-pantalla-titulo {
+  font-size: 13px;
+  font-weight: 800;
+  text-shadow: 0 1px 4px #000;
+}
+
+.camara-pantalla-inferior {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 22px 12px calc(24px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to top, rgba(0,0,0,.85), rgba(0,0,0,0));
+}
+
+.camara-pantalla-indicacion,
+.camara-pantalla-ayuda {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 4px #000;
+}
+
+.camara-pantalla-disparar {
+  display: grid;
+  place-items: center;
+  width: 78px;
+  height: 78px;
+  border: 4px solid #fff;
+  border-radius: 50%;
+  padding: 5px;
+  background: rgba(255,255,255,.22);
+  cursor: pointer;
+}
+
+.camara-pantalla-disparar span {
+  display: block;
+  width: 57px;
+  height: 57px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.camara-pantalla-disparar:active {
+  transform: scale(.94);
+}
+
+.camara-pantalla-disparar:disabled {
+  opacity: .55;
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .camara-pantalla-superior {
+    padding-top: max(6px, env(safe-area-inset-top, 0px));
+  }
+  .camara-pantalla-inferior {
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+    gap: 3px;
+  }
+  .camara-pantalla-disparar {
+    width: 58px;
+    height: 58px;
+  }
+  .camara-pantalla-disparar span {
+    width: 38px;
+    height: 38px;
+  }
+}
+
+
+/* Botón de vista previa compacto: no se incrusta la imagen en el formulario. */
+.btn-ver-fotografia {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  margin-top: 8px;
+  padding: 7px 12px;
+  border: 1px solid #c3d4e8;
+  border-radius: 8px;
+  background: #fff;
+  color: #153d70;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.btn-ver-fotografia:disabled { opacity: .55; }
+
+/* Visor a pantalla completa, separado del scroll de Ionic. */
+.visor-fotografia {
+  position: fixed;
+  inset: 0;
+  z-index: 100001;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  background: #0b1422;
+  color: #fff;
+}
+
+.visor-fotografia-barra {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 55px;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 12px 8px;
+  background: #14243a;
+}
+
+.visor-fotografia-barra strong {
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.visor-fotografia-barra button {
+  flex: none;
+  min-height: 38px;
+  padding: 7px 12px;
+  border: 1px solid #899bb1;
+  border-radius: 8px;
+  background: #f7faff;
+  color: #153d70;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.visor-fotografia-contenido {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+  touch-action: pinch-zoom;
+}
+
+.visor-fotografia-contenido img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.visor-fotografia-contenido p {
+  color: #e7eff9;
+  font-size: 13px;
 }

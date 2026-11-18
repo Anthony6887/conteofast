@@ -9,6 +9,8 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, type SafeUrl } from '@angular/platform-browser';
+import { Capacitor } from '@capacitor/core';
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import {
   IonBackButton,
   IonButtons,
@@ -129,8 +131,7 @@ export class RegistroPage implements OnInit {
     this.destroyRef.onDestroy(() => {
 
       this.detenerCamara();
-
-      this.liberarFotoVista();
+      this.cerrarVistaPrevia();
 
     });
 
@@ -229,11 +230,14 @@ export class RegistroPage implements OnInit {
 
   fotoSeleccionada: File | null = null;
 
-  fotoVista: SafeUrl | null = null;
-
   fotoResolucion = '';
 
-  private fotoUrl: string | null = null;
+  /** El visor solo existe al pulsar Ver fotografía. */
+  vistaPreviaAbierta = false;
+  vistaPreviaCargando = false;
+  vistaPreviaSrc: SafeUrl | null = null;
+  private vistaPreviaObjectUrl: string | null = null;
+  private vistaPreviaVersion = 0;
 
   subiendoFoto = false;
 
@@ -951,21 +955,10 @@ export class RegistroPage implements OnInit {
 
   }
 
-  private liberarFotoVista(): void {
-
-    if (this.fotoUrl) URL.revokeObjectURL(this.fotoUrl);
-
-    this.fotoUrl = null;
-
-    this.fotoVista = null;
-
-  }
-
   private limpiarFoto(): void {
 
+    this.cerrarVistaPrevia();
     this.detenerCamara();
-
-    this.liberarFotoVista();
 
     this.fotoDisponible = false;
 
@@ -976,26 +969,6 @@ export class RegistroPage implements OnInit {
     this.procesandoFoto = false;
 
     this.subiendoFoto = false;
-
-  }
-
-  private async cargarFotoGuardada(id: number): Promise<void> {
-
-    const tipo = this.dignidadSeleccionada;
-    if (!tipo) return;
-    const cliente = this.api as ConteofastService & {
-      obtenerFotoDignidad?: (juntaId: number, tipo: TipoDignidad) => Promise<Blob>;
-    };
-    if (!cliente.obtenerFotoDignidad) throw new Error('Falta obtenerFotoDignidad en el servicio.');
-    const resFoto = await cliente.obtenerFotoDignidad(id, tipo);
-
-    if (this.juntaId !== id) return;
-
-    this.liberarFotoVista();
-
-    this.fotoUrl = URL.createObjectURL(resFoto);
-
-    this.fotoVista = this.sanitizer.bypassSecurityTrustUrl(this.fotoUrl);
 
   }
 
@@ -1067,11 +1040,85 @@ export class RegistroPage implements OnInit {
 
   }
 
+  /**
+   * Abre una vista previa temporal, sin imagen persistente en el formulario.
+   * Se utiliza primero el PNG local pendiente; en caso contrario, la foto
+   * confirmada de esta junta + dignidad se descarga del servidor.
+   */
+  async verFotografia(): Promise<void> {
+    const id = this.juntaId;
+    const tipo = this.dignidadSeleccionada;
+    if (!id || !tipo || this.vistaPreviaAbierta || this.vistaPreviaCargando ||
+      (!this.fotoSeleccionada && !this.fotoDisponible)) return;
+
+    const version = ++this.vistaPreviaVersion;
+    this.vistaPreviaAbierta = true;
+    this.vistaPreviaCargando = true;
+
+    try {
+      const foto: Blob = this.fotoSeleccionada
+        ? this.fotoSeleccionada
+        : await this.api.obtenerFotoDignidad(id, tipo);
+
+      if (this.destroyRef.destroyed || !this.vistaPreviaAbierta ||
+        version !== this.vistaPreviaVersion || this.juntaId !== id ||
+        this.dignidadSeleccionada !== tipo) return;
+
+      if (!foto.size || (foto.type && !['image/png', 'image/jpeg'].includes(foto.type))) {
+        throw new Error('El archivo del acta no es una imagen PNG/JPEG válida.');
+      }
+
+      this.vistaPreviaObjectUrl = URL.createObjectURL(foto);
+      this.vistaPreviaSrc = this.sanitizer.bypassSecurityTrustUrl(this.vistaPreviaObjectUrl);
+    } catch (error: unknown) {
+      if (version === this.vistaPreviaVersion) {
+        this.cerrarVistaPrevia();
+        await this.mostrarToast(`No se pudo mostrar la fotografía: ${this.descripcionError(error)}`);
+      }
+    } finally {
+      if (version === this.vistaPreviaVersion) {
+        this.vistaPreviaCargando = false;
+        this.actualizarVista();
+      }
+    }
+  }
+
+  cerrarVistaPrevia(): void {
+    // Invalida cualquier descarga pendiente para una junta/dignidad anterior.
+    ++this.vistaPreviaVersion;
+    this.vistaPreviaAbierta = false;
+    this.vistaPreviaCargando = false;
+    this.vistaPreviaSrc = null;
+    if (this.vistaPreviaObjectUrl) URL.revokeObjectURL(this.vistaPreviaObjectUrl);
+    this.vistaPreviaObjectUrl = null;
+  }
+
+  /** Única acción en el panel: cámara / reenvío, según el estado de la fotografía. */
+  async accionFotografia(): Promise<void> {
+    if (!this.juntaId || this.guardando || this.consultando || this.subiendoFoto ||
+      this.procesandoFoto || this.camaraCargando || this.registroFinalizado) return;
+
+    if (this.fotoSeleccionada && this.dignidadGuardada && !this.cambiosSinGuardar) {
+      await this.subirFotoServidor();
+      return;
+    }
+
+    await this.abrirCamara();
+  }
+
   /** Abre únicamente la cámara. No permite elegir archivos de la galería. */
 
   async abrirCamara(): Promise<void> {
 
-    if (this.guardando || this.registroFinalizado || this.consultando || this.camaraCargando) return;
+    if (!this.juntaId || !this.dignidadSeleccionada || this.guardando || this.registroFinalizado ||
+      this.consultando || this.camaraCargando || this.subiendoFoto || this.procesandoFoto) return;
+
+    // APK Android/iOS: abrir la aplicación nativa de cámara del teléfono.
+    // Ionic serve (navegador): conservar la cámara web como alternativa.
+    if (Capacitor.isNativePlatform()) {
+      await this.abrirCamaraNativa();
+      return;
+    }
 
     if (!navigator.mediaDevices?.getUserMedia) {
 
@@ -1135,6 +1182,128 @@ export class RegistroPage implements OnInit {
 
   }
 
+  /**
+   * Cámara nativa del teléfono: usa la app de cámara instalada (zoom/enfoque/flash
+   * según soporte del fabricante). Solo permite CAPTURAR, no elegir de galería.
+   *
+   * La API antigua getPhoto sigue disponible en Capacitor 7 y 8 (en 8 está
+   * deprecada). Esto permite mantener compatibilidad con ambos proyectos.
+   */
+  private async abrirCamaraNativa(): Promise<void> {
+    const id = this.juntaId;
+    const dignidad = this.dignidadSeleccionada;
+    if (!id || !dignidad) return;
+
+    this.camaraCargando = true;
+    let fotoCapturada = false;
+    try {
+      this.detenerCamara();
+
+      const foto = await Camera.getPhoto({
+        source: CameraSource.Camera,
+        resultType: CameraResultType.Uri,
+        quality: 100,
+        correctOrientation: true,
+        saveToGallery: false,
+        allowEditing: false,
+      });
+
+      // Si el usuario cambió de selección mientras Android abría otra Activity,
+      // no asociar la imagen a una junta o dignidad incorrectas.
+      if (this.destroyRef.destroyed || this.juntaId !== id ||
+        this.dignidadSeleccionada !== dignidad || this.registroFinalizado) return;
+
+      if (!foto.webPath) throw new Error('La cámara no devolvió la fotografía.');
+      this.procesandoFoto = true;
+      const resultado = await this.convertirFotoNativaAPng(foto.webPath, id, dignidad);
+
+      if (this.destroyRef.destroyed || this.juntaId !== id ||
+        this.dignidadSeleccionada !== dignidad || this.registroFinalizado) return;
+
+      this.fotoSeleccionada = resultado.archivo;
+      this.fotoResolucion = resultado.resolucion;
+      fotoCapturada = true;
+      await this.mostrarToast(
+        this.dignidadGuardada && !this.cambiosSinGuardar
+          ? 'Foto tomada con la cámara del teléfono. Enviando al servidor...'
+          : 'Fotografía tomada. Se enviará después de guardar los votos.',
+        'success'
+      );
+    } catch (error: unknown) {
+      const mensaje = this.descripcionError(error);
+      // Salir sin hacer foto no debe borrar la fotografía anterior.
+      if (!/cancelled|canceled|cancelado|cancelada|user cancelled|user canceled|no image picked/i.test(mensaje)) {
+        await this.mostrarToast(`Cámara del dispositivo: ${mensaje}`);
+      }
+    } finally {
+      this.procesandoFoto = false;
+      this.camaraCargando = false;
+      this.actualizarVista();
+    }
+
+    if (fotoCapturada && this.juntaId === id && this.dignidadSeleccionada === dignidad &&
+      this.dignidadGuardada && !this.cambiosSinGuardar) {
+      await this.subirFotoServidor();
+    }
+  }
+
+  /**
+   * Android suele devolver JPEG. El backend de ConteoFast exige PNG binario.
+   * Se transcodifica a PNG (sin aplicar compresión JPEG adicional) y se
+   * reduce progresivamente solo si el tamaño supera el límite de la API.
+   */
+  private async convertirFotoNativaAPng(
+    webPath: string, juntaId: number, dignidad: TipoDignidad
+  ): Promise<{ archivo: File; resolucion: string }> {
+    const respuesta = await fetch(webPath);
+    if (!respuesta.ok) throw new Error('No se pudo leer la foto de la cámara nativa.');
+    const imagenOriginal = await respuesta.blob();
+    if (imagenOriginal.size < 512) throw new Error('La cámara devolvió una foto vacía.');
+
+    const urlImagen = URL.createObjectURL(imagenOriginal);
+    const imagen = new Image();
+    try {
+      imagen.src = urlImagen;
+      await imagen.decode();
+      if (imagen.naturalWidth < 1 || imagen.naturalHeight < 1) {
+        throw new Error('La fotografía no contiene dimensiones válidas.');
+      }
+
+      // Evitar agotar la memoria del WebView con imágenes de 50-200 MP.
+      // La cámara conserva el detalle de fotos habituales de hasta 16 MP.
+      const maxPixeles = 16_000_000;
+      let escala = Math.min(1, Math.sqrt(maxPixeles / (imagen.naturalWidth * imagen.naturalHeight)));
+      const maxBytes = 29 * 1024 * 1024; // margen frente al límite API de 30 MiB
+
+      for (let intento = 0; intento < 9; intento++) {
+        const ancho = Math.max(1, Math.round(imagen.naturalWidth * escala));
+        const alto = Math.max(1, Math.round(imagen.naturalHeight * escala));
+        const canvas = document.createElement('canvas');
+        canvas.width = ancho;
+        canvas.height = alto;
+        const contexto = canvas.getContext('2d', { alpha: false });
+        if (!contexto) throw new Error('No se pudo preparar la fotografía PNG.');
+        contexto.imageSmoothingEnabled = true;
+        contexto.imageSmoothingQuality = 'high';
+        contexto.drawImage(imagen, 0, 0, ancho, alto);
+
+        const png = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+        canvas.width = 0;
+        canvas.height = 0;
+        if (png && png.size >= 512 && png.size <= maxBytes) {
+          return {
+            archivo: new File([png], `acta_junta_${juntaId}_${dignidad}.png`, { type: 'image/png' }),
+            resolucion: `${ancho} × ${alto} píxeles`,
+          };
+        }
+        escala *= 0.84;
+      }
+      throw new Error('La fotografía supera los 30 MB. Acércate al acta y vuelve a capturarla.');
+    } finally {
+      URL.revokeObjectURL(urlImagen);
+    }
+  }
+
   cerrarCamara(): void { this.detenerCamara(); }
 
   private detenerCamara(): void {
@@ -1193,15 +1362,10 @@ export class RegistroPage implements OnInit {
 
       const archivo = new File([png], 'acta-local.png', { type: 'image/png' });
 
-      this.liberarFotoVista();
 
       this.fotoSeleccionada = archivo;
 
       this.fotoResolucion = `${video.videoWidth} × ${video.videoHeight} píxeles`;
-
-      this.fotoUrl = URL.createObjectURL(archivo);
-
-      this.fotoVista = this.sanitizer.bypassSecurityTrustUrl(this.fotoUrl);
 
       this.detenerCamara();
 
@@ -1681,11 +1845,7 @@ export class RegistroPage implements OnInit {
 
       this.cambiosSinGuardar = false;
 
-      if (this.fotoDisponible) {
 
-        try { await this.cargarFotoGuardada(id); } catch { /* metadatos siguen disponibles */ }
-
-      }
 
     } catch (e: unknown) {
 
