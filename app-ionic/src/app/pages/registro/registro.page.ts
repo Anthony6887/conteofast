@@ -9,8 +9,8 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, type SafeUrl } from '@angular/platform-browser';
-import { Capacitor } from '@capacitor/core';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { Capacitor } from '@capacitor/core';
 import {
   IonBackButton,
   IonButtons,
@@ -63,19 +63,12 @@ interface ListaAgrupada {
 const CONCEJALES_LEGADOS: Record<number, { nombre: string; numero: string; ambito: AmbitoRecinto }> = {
 
   2: { nombre: 'CECILIA SILVA', numero: '8', ambito: 'RURAL' },
-
   6: { nombre: 'EDISON RODRIGUEZ', numero: '8', ambito: 'URBANO' },
-
   7: { nombre: 'EDWIN CAIZABANDA', numero: '18', ambito: 'RURAL' },
-
   8: { nombre: 'DANIEL LUNA', numero: '18', ambito: 'URBANO' },
-
   9: { nombre: 'GRACIELA HIDALGO', numero: '62', ambito: 'RURAL' },
-
   10: { nombre: 'IVAN PICO', numero: '62', ambito: 'URBANO' },
-
   11: { nombre: 'LUIS SILVA', numero: '7', ambito: 'RURAL' },
-
   12: { nombre: 'PAOLA PICO', numero: '7', ambito: 'URBANO' }
 
 };

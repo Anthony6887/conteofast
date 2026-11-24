@@ -96,7 +96,7 @@ function compararLista(a: { lista: string }, b: { lista: string }): number {
 
 /**
  * Agrupa por lista los votos que el backend trae de cf_candidatos y sus registros.
- * En Vocales es necesario sumar todos los registros (parroquias) de la misma lista.
+ * En Vocales recibe únicamente candidatos y votos de la parroquia seleccionada.
  * La función no genera filas ficticias ni votos de demostración.
  */
 export function agruparPorListas(

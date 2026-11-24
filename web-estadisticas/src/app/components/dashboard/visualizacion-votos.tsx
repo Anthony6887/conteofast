@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type CSSProperties, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type ChangeEvent } from 'react';
 import Image from 'next/image';
 
 import type { DashboardDatos } from '../../lib/electoral';
@@ -13,6 +13,7 @@ import {
   type ResultadoLista,
 } from '../../lib/visualizacion-en-vivo';
 import { VotosEspecialesColumnas } from './votos-especiales-columnas';
+import { PARROQUIAS_VOCALES, type VocalesParroquia } from '../../lib/parroquias-vocales';
 import { obtenerEspeciales } from './votos-especiales';
 
 import './visualizacion-en-vivo.css';
@@ -132,11 +133,45 @@ export default function VisualizacionVotos({ datos, conectado, hora }: Props) {
   const [escenario, setEscenario] = useState<TipoEscenario>('ALCALDE');
   const [orden, setOrden] = useState<OrdenVisual>('lista');
 
+  const [parroquia, setParroquia] = useState<string>(PARROQUIAS_VOCALES[0].id);
+  const [lectura, setLectura] = useState<{ id: string; data?: VocalesParroquia; error?: string } | null>(null);
+  const esVocal = escenario === 'VOCAL';
+  const ficha = PARROQUIAS_VOCALES.find(p => p.id === parroquia)!;
+  useEffect(() => {
+    if (!esVocal) return;
+    let activo = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const ctrl = new AbortController();
+    async function consultar() {
+      try {
+        const r = await fetch(`${BASE_PATH}/api/vocales-parroquia?parroquia=${encodeURIComponent(parroquia)}`, { cache: 'no-store', signal: ctrl.signal });
+        const json = await r.json();
+        if (!r.ok || !json.ok || !json.data) throw new Error(json.message || 'Error consultando parroquia.');
+        if (activo) setLectura({ id: parroquia, data: json.data });
+      } catch (e) {
+        if (activo) setLectura({ id: parroquia, error: e instanceof Error ? e.message : 'Sin conexión.' });
+      } finally {
+        if (activo) timer = setTimeout(consultar, 10000);
+      }
+    }
+    void consultar();
+    return () => { activo = false; ctrl.abort(); clearTimeout(timer); };
+  }, [esVocal, parroquia]);
+  const local = lectura?.id === parroquia ? lectura.data : undefined;
+  const errorLocal = lectura?.id === parroquia ? lectura.error : undefined;
+  const candidatosLocales = useMemo(() => {
+    if (!local || Number(local.eleccion_id) !== Number(datos.eleccion_id)) return null;
+    const catalogo = new Map(datos.candidatos.filter(c => ['VOCAL', 'VOCALES'].includes(String(c.tipo).toUpperCase())).map(c => [Number(c.candidato_id), c]));
+    if (local.votos.some(v => !catalogo.has(v.candidato_id) || !catalogo.get(v.candidato_id)?.numero_lista)) return null;
+    return local.votos.map(v => ({ ...catalogo.get(v.candidato_id)!, total_votos: v.votos }));
+  }, [local, datos.candidatos, datos.eleccion_id]);
+  const listo = !esVocal || (!!local && candidatosLocales !== null);
   const filas = useMemo(
-    () => agruparPorListas(datos.candidatos, escenario, orden),
-    [datos.candidatos, escenario, orden],
+    () => agruparPorListas(esVocal ? candidatosLocales ?? [] : datos.candidatos, escenario, orden),
+    [datos.candidatos, candidatosLocales, esVocal, escenario, orden],
   );
-  const especiales = obtenerEspeciales(datos.especiales, escenario);
+  const especialesGrafico = esVocal ? (listo && local ? [{ dignidad: 'VOCAL' as const, nulos: local.nulos, blancos: local.blancos, disponible: true }] : []) : datos.especiales;
+  const especiales = obtenerEspeciales(especialesGrafico, escenario);
   const totalListas = totalVotos(filas);
   const totalGraficado = totalListas + (especiales.disponible ? especiales.nulos + especiales.blancos : 0);
   const maximo = Math.max(
@@ -146,14 +181,15 @@ export default function VisualizacionVotos({ datos, conectado, hora }: Props) {
     especiales.disponible ? especiales.blancos : 0,
   );
   const cantidadColumnas = filas.length + 2;
-  const reporteJuntas = Math.min(datos.juntas_confirmadas, datos.juntas_total);
-  const progreso = datos.juntas_total > 0 ? (100 * reporteJuntas) / datos.juntas_total : 0;
+  const juntasTotal = esVocal ? ficha.juntas : datos.juntas_total;
+  const reporteJuntas = esVocal ? (listo ? local?.juntas_confirmadas ?? 0 : 0) : Math.min(datos.juntas_confirmadas, datos.juntas_total);
+  const progreso = juntasTotal > 0 ? (100 * reporteJuntas) / juntasTotal : 0;
   const seleccionado = ESCENARIOS.find(e => e.id === escenario)!;
 
   /** Imprime esta dignidad con los resultados actuales. Chrome permite Guardar como PDF. */
   const imprimirPDF = () => {
     const tituloAnterior = document.title;
-    const nombre = `ConteoFast_${escenario}_${new Date().toISOString().slice(0, 10)}`;
+    const nombre = `ConteoFast_${escenario}${esVocal ? `_${parroquia}` : ""}_${new Date().toISOString().slice(0, 10)}`;
     document.title = nombre;
     const restaurarTitulo = () => {
       document.title = tituloAnterior;
@@ -169,23 +205,23 @@ export default function VisualizacionVotos({ datos, conectado, hora }: Props) {
         <header className="vl-encabezado">
           <div className="vl-identidad-general">
             <div className="vl-etiqueta-superior">
-              <i className={conectado ? '' : 'vl-desconectado'} />
-              CONTEO ELECTORAL · {conectado ? 'EN VIVO' : 'ÚLTIMA LECTURA'}
+              <i className={(esVocal ? listo : conectado) ? '' : 'vl-desconectado'} />
+              CONTEO ELECTORAL · {(esVocal ? listo : conectado) ? 'EN VIVO' : 'SIN DATOS ACTUALES'}
             </div>
             <h1>Votos en tiempo real</h1>
             <p className="vl-solo-impresion">
-              Reporte de {seleccionado.titulo} · {new Date().toLocaleDateString('es-EC')}
+              Reporte de {seleccionado.titulo}{esVocal ? ` — ${ficha.nombre}` : ""} · {new Date().toLocaleDateString('es-EC')}
             </p>
           </div>
 
           <div className="vl-contadores">
             <div className="vl-contador-secundario">
               <span>Juntas registradas</span>
-              <strong>{numero(reporteJuntas)} <small>/ {numero(datos.juntas_total)}</small></strong>
+              <strong>{listo ? numero(reporteJuntas) : "—"} <small>/ {numero(juntasTotal)}</small></strong>
             </div>
             <div className="vl-contador-porcentaje">
               <span>Avance de juntas</span>
-              <strong>{progreso.toFixed(1)}%</strong>
+              <strong>{listo ? `${progreso.toFixed(1)}%` : "—"}</strong>
             </div>
           </div>
         </header>
@@ -197,11 +233,11 @@ export default function VisualizacionVotos({ datos, conectado, hora }: Props) {
             aria-label="Cobertura de juntas"
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-valuenow={Number(progreso.toFixed(1))}
+            aria-valuenow={listo ? Number(progreso.toFixed(1)) : undefined}
           >
             <span style={{ width: `${Math.max(0, Math.min(100, progreso))}%` }} />
           </div>
-          <div className="vl-ultima-lectura">Actualizado: <strong>{hora}</strong></div>
+          <div className="vl-ultima-lectura">Actualizado: <strong>{esVocal ? (listo && local ? new Date(local.consultado_en).toLocaleTimeString("es-EC") : "—") : hora}</strong></div>
         </div>
 
         <div className="vl-pestanas" role="tablist" aria-label="Escenarios electorales">
@@ -221,9 +257,13 @@ export default function VisualizacionVotos({ datos, conectado, hora }: Props) {
           ))}
         </div>
 
+        {esVocal && <div className="vl-parroquias" aria-label="Parroquias rurales">
+          {PARROQUIAS_VOCALES.map(p => <button key={p.id} type="button" aria-pressed={parroquia === p.id} className={`vl-pestana ${parroquia === p.id ? 'vl-pestana--activa' : ''}`} onClick={() => { if (p.id !== parroquia) { setLectura(null); setParroquia(p.id); } }}>{p.nombre}</button>)}
+        </div>}
         <div className="vl-cabecera-grafico">
           <div>
-            <h2>{seleccionado.titulo}</h2>
+            <h2>{seleccionado.titulo}{esVocal ? ` — ${ficha.nombre}` : ""}</h2>
+          
             {seleccionado.detalle && <span>{seleccionado.detalle}</span>}
           </div>
           <div className="vl-herramientas">
@@ -231,6 +271,7 @@ export default function VisualizacionVotos({ datos, conectado, hora }: Props) {
               className="vl-boton-pdf"
               type="button"
               onClick={imprimirPDF}
+              disabled={!listo}
               aria-label={`Imprimir o guardar como PDF el reporte de ${seleccionado.titulo}`}
               title="Imprimir o guardar como PDF"
             >
@@ -262,14 +303,14 @@ export default function VisualizacionVotos({ datos, conectado, hora }: Props) {
           role="tabpanel"
           aria-labelledby={`tab-${LLAVE_ESCENARIO(escenario)}`}
         >
-          <div
+          {!listo ? <p className="vl-aviso-vacio" role="status">{errorLocal || (local ? 'El catálogo de candidatos no coincide con los votos de la parroquia.' : 'Consultando resultados de la parroquia…')}</p> : <div
             className="vl-desplazamiento"
             tabIndex={0}
             aria-label="Gráfico completo de listas, votos nulos y votos blancos"
           >
             {!filas.length && (
               <p className="vl-aviso-vacio">
-                No hay listas para esta dignidad. Se muestran los votos nulos y blancos disponibles.
+                {esVocal ? 'Aún no hay votos de listas registrados para esta parroquia.' : 'No hay listas para esta dignidad. Se muestran los votos nulos y blancos disponibles.'}
               </p>
             )}
             <div
@@ -288,14 +329,14 @@ export default function VisualizacionVotos({ datos, conectado, hora }: Props) {
                 />
               ))}
               <VotosEspecialesColumnas
-                especiales={datos.especiales}
+                especiales={especialesGrafico}
                 dignidad={escenario}
                 maximo={maximo}
                 totalGraficado={totalGraficado}
-                juntasConfirmadas={datos.juntas_confirmadas}
+                juntasConfirmadas={reporteJuntas}
               />
             </div>
-          </div>
+          </div>}
         </div>
       </section>
     </div>
