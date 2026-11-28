@@ -2,6 +2,7 @@
 
 
 
+const storage = require('../services/evidencias-storage');
 const { QueryTypes } = require('sequelize');
 
 const { sequelize } = require('../models');
@@ -180,9 +181,9 @@ function candidatosPermitidos(candidatos, recinto) {
 
     }
 
-    if (!listasConcejales.has(lista)) return false;
+    if (tipo === 'ALCALDE') return LISTAS.ALCALDE.includes(lista);
 
-    if (tipo === 'ALCALDE') return true;
+    if (!listasConcejales.has(lista)) return false;
 
     if (tipo !== 'CONCEJAL') return false;
 
@@ -504,7 +505,7 @@ async function registroPorJunta(req, res) {
 
     const [foto] = await sequelize.query(`
 
-      SELECT mime, tamano_bytes, sha256, actualizado_en
+      SELECT mime, tamano_bytes, sha256, actualizado_en, ruta_archivo
 
       FROM cf_registro_evidencias WHERE registro_id = :registroId LIMIT 1
 
@@ -524,7 +525,7 @@ async function registroPorJunta(req, res) {
 
         evidencia: foto ? {
 
-          disponible: true, mime: foto.mime,
+          disponible: await storage.disponible(foto), mime: foto.mime,
 
           bytes: Number(foto.tamano_bytes), sha256: foto.sha256,
 
@@ -716,7 +717,9 @@ async function persistir(req, res, requiereExistente) {
 
         `, { ...select, replacements: { registroId } });
 
-        if (cierres.length) {
+        const cierresDignidad = await sequelize.query('SELECT registro_id FROM cf_registro_dignidad_cierres WHERE registro_id = :registroId LIMIT 1 FOR UPDATE', { transaction, type: QueryTypes.SELECT, replacements: { registroId } });
+
+        if (cierres.length || cierresDignidad.length) {
 
           throw new HttpError(409, 'Junta FINALIZADA: no se pueden modificar los votos.');
 
@@ -918,10 +921,16 @@ async function eliminar(req, res) {
 
       `, { transaction, type: QueryTypes.SELECT, replacements: { registroId } });
 
-      if (cierres.length) {
+      const cierresDignidad = await sequelize.query('SELECT registro_id FROM cf_registro_dignidad_cierres WHERE registro_id = :registroId LIMIT 1 FOR UPDATE', { transaction, type: QueryTypes.SELECT, replacements: { registroId } });
+
+      if (cierres.length || cierresDignidad.length) {
 
         throw new HttpError(409, 'Junta FINALIZADA: no se puede eliminar su registro.');
 
+      }
+
+      for (const tabla of ['cf_registro_dignidad_evidencias', 'cf_registro_dignidad_guardados']) {
+        await sequelize.query(`DELETE FROM ${tabla} WHERE registro_id = :registroId`, { transaction, replacements: { registroId } });
       }
 
       await sequelize.query('DELETE FROM cf_registro_evidencias WHERE registro_id = :registroId', {

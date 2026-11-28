@@ -33,6 +33,7 @@ import {
   RECINTOS_ELECTORALES,
   RECINTOS_POR_CODIGO,
   LISTAS_CONCEJALES,
+  LISTAS_ALCALDES,
   VOCALES_POR_RECINTO,
   type AmbitoRecinto,
   type RecintoElectoral,
@@ -434,9 +435,9 @@ export class RegistroPage implements OnInit {
 
       }
 
-      if (!concejalesValidos.has(lista)) return false;
+      if (tipo === 'ALCALDE') return LISTAS_ALCALDES.includes(lista);
 
-      if (tipo === 'ALCALDE') return true;
+      if (!concejalesValidos.has(lista)) return false;
 
       if (tipo !== 'CONCEJAL') return false;
 
@@ -690,7 +691,7 @@ export class RegistroPage implements OnInit {
 
     const presentes = new Set(this.concejales.map(c => this.numeroLista(c)));
 
-    return [...new Set(this.alcaldes.map(c => this.numeroLista(c)))].filter(n =>
+    return LISTAS_CONCEJALES[this.ambito].filter(n =>
 
       !!n && !presentes.has(n)
 
@@ -987,9 +988,9 @@ export class RegistroPage implements OnInit {
       if (!this.dignidadSeleccionada || !apiFoto.obtenerFotoDignidad) throw new Error('Falta obtenerFotoDignidad() en el servicio.');
       const archivo = await apiFoto.obtenerFotoDignidad(id, this.dignidadSeleccionada);
 
-      const esJpeg = archivo.type === 'image/jpeg';
+      const extension = archivo.type === 'image/jpeg' ? 'jpg' : archivo.type === 'image/webp' ? 'webp' : 'png';
 
-      if (archivo.type && archivo.type !== 'image/png' && !esJpeg) {
+      if (archivo.type && !['image/png', 'image/jpeg', 'image/webp'].includes(archivo.type)) {
 
         throw new Error('El servidor no devolvió una fotografía PNG válida.');
 
@@ -1001,7 +1002,7 @@ export class RegistroPage implements OnInit {
 
       const codigo = this.codigoRecinto ?? 'recinto';
 
-      const nombre = `acta_${codigo}_${tipo}${this.numeroJunta(Number(nro))}_${this.dignidadSeleccionada}.${esJpeg ? 'jpg' : 'png'}`;
+      const nombre = `acta_${codigo}_${tipo}${this.numeroJunta(Number(nro))}_${this.dignidadSeleccionada}.${extension}`;
 
       const url = URL.createObjectURL(archivo);
 
@@ -1057,8 +1058,8 @@ export class RegistroPage implements OnInit {
         version !== this.vistaPreviaVersion || this.juntaId !== id ||
         this.dignidadSeleccionada !== tipo) return;
 
-      if (!foto.size || (foto.type && !['image/png', 'image/jpeg'].includes(foto.type))) {
-        throw new Error('El archivo del acta no es una imagen PNG/JPEG válida.');
+      if (!foto.size || (foto.type && !['image/png', 'image/jpeg', 'image/webp'].includes(foto.type))) {
+        throw new Error('El archivo del acta no es una imagen PNG/JPEG/WebP válida.');
       }
 
       this.vistaPreviaObjectUrl = URL.createObjectURL(foto);
@@ -1450,11 +1451,11 @@ export class RegistroPage implements OnInit {
       }
       const resultado = await this.conLimiteDeEspera(
         apiFoto.subirFotoDignidad(juntaId, tipo, archivo),
-        30000,
+        125000,
         'El servidor no confirmó la fotografía. Consulta la junta antes de intentar otra vez.'
       );
       if (!resultado.ok) throw new Error(resultado.message || 'No se pudo guardar el acta.');
-      if (this.juntaId !== juntaId) return;
+      if (this.juntaId !== juntaId || this.dignidadSeleccionada !== tipo) return;
 
       // Leer estado del servidor; no confiar únicamente en la respuesta al POST.
       const verificacion = await this.conLimiteDeEspera(
@@ -1465,6 +1466,7 @@ export class RegistroPage implements OnInit {
       if (!verificacion.ok || verificacion.data?.[tipo]?.foto !== true) {
         throw new Error('La API aún no confirma la fotografía. Reconsulta la junta.');
       }
+      if (this.juntaId !== juntaId || this.dignidadSeleccionada !== tipo) return;
       this.fotoDisponible = true;
       this.estadosDignidad[tipo].foto = true;
       this.fotoSeleccionada = null;

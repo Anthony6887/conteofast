@@ -12,6 +12,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=5002
 ENV TZ=America/Guayaquil
+ENV CF_EVIDENCIAS_DIR=/data/evidencias
+RUN mkdir -p /data/evidencias && chown node:node /data/evidencias && chmod 750 /data/evidencias
 
 # Copiar dependencias
 COPY package.json package-lock.json ./

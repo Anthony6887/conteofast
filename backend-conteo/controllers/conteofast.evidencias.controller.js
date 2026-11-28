@@ -2,12 +2,13 @@
 
 /**
  * Evidencia fotográfica y cierre definitivo de cada junta.
- * La imagen se almacena en MySQL; no depende de archivos del contenedor.
+ * La imagen se almacena en un directorio persistente; MySQL conserva la ruta y metadatos.
  * IMPORTANTE: incorporar autenticación de usuarios en las rutas POST/PUT/DELETE
  * antes de despliegue público. El cierre bloquea a TODOS, pero no identifica
  * a la persona que pulsa Finalizar si no se configura autenticación.
  */
 const crypto = require('node:crypto');
+const storage = require('../services/evidencias-storage');
 const { QueryTypes } = require('sequelize');
 const { sequelize } = require('../models');
 const { _internals: reglas } = require('./conteofast.controller');
@@ -82,18 +83,19 @@ async function subirFoto(req, res) {
     const huella = sha256(req.body);
     const bytes = req.body.length;
     await sequelize.transaction(async transaction => {
-      const { registro, cerrado } = await bloquearJunta(juntaId, transaction);
+      const { junta, registro, cerrado, eleccionId } = await bloquearJunta(juntaId, transaction);
       if (cerrado) throw new HttpError(409, 'Junta finalizada: la fotografía está bloqueada.');
+      const ruta = await storage.guardar({ eleccionId, recintoId: junta.recinto_id, juntaId, registroId: registro.id, tipo: 'GENERAL', foto: req.body, mime });
       await sequelize.query(`
         INSERT INTO cf_registro_evidencias
-          (registro_id, nombre_archivo, mime, tamano_bytes, sha256, imagen)
-        VALUES ($registroId, 'acta.png', $mime, $bytes, $huella, $foto)
+          (registro_id, nombre_archivo, mime, tamano_bytes, sha256, ruta_archivo)
+        VALUES ($registroId, 'acta.png', $mime, $bytes, $huella, $ruta)
         ON DUPLICATE KEY UPDATE
           nombre_archivo = VALUES(nombre_archivo),
           mime = VALUES(mime), tamano_bytes = VALUES(tamano_bytes),
-          sha256 = VALUES(sha256), imagen = VALUES(imagen),
+          sha256 = VALUES(sha256), ruta_archivo = VALUES(ruta_archivo),
           actualizado_en = CURRENT_TIMESTAMP
-      `, { transaction, bind: { registroId: registro.id, mime, bytes, huella, foto: req.body } });
+      `, { transaction, bind: { registroId: registro.id, mime, bytes, huella, ruta } });
     });
     res.set('Cache-Control', 'no-store');
     return res.json({ ok: true, message: 'Fotografía del acta guardada.', data: { mime, bytes, sha256: huella } });
@@ -106,7 +108,7 @@ async function responderFoto(req, res, descarga = false) {
     if (!juntaId) throw new HttpError(400, 'ID de junta inválido.');
     const eleccionId = Number(process.env.CF_ELECCION_ID || 1);
     const filas = await sequelize.query(`
-      SELECT f.mime, f.imagen, f.tamano_bytes, f.nombre_archivo
+      SELECT f.mime, f.ruta_archivo, f.sha256, f.tamano_bytes, f.nombre_archivo
       FROM cf_registro_evidencias f
       JOIN cf_registros r ON r.id = f.registro_id
       JOIN juntas j ON j.id = r.junta_id
@@ -114,16 +116,9 @@ async function responderFoto(req, res, descarga = false) {
         AND j.activo = 1 LIMIT 1
     `, { type: QueryTypes.SELECT, replacements: { juntaId, eleccionId } });
     if (!filas.length) throw new HttpError(404, 'Esta junta no tiene fotografía.');
-    // El archivo en MySQL es binario, pero al servirlo se entrega como PNG
-    // con un nombre real. phpMyAdmin, en cambio, descarga los BLOB como .bin.
-    const contenido = Buffer.isBuffer(filas[0].imagen)
-      ? filas[0].imagen : Buffer.from(filas[0].imagen);
-    const esPng = detectarMime(contenido) === 'image/png';
-    const extension = esPng ? 'png' : 'jpg';
-    const mimeRespuesta = esPng ? 'image/png' : 'image/jpeg';
-    if (detectarMime(contenido) !== mimeRespuesta) {
-      throw new HttpError(422, 'La fotografía almacenada no es un PNG/JPG válido.');
-    }
+    const contenido = await storage.leer(filas[0]);
+    const mimeRespuesta = filas[0].mime;
+    const extension = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' }[mimeRespuesta];
     const nombre = `acta_junta_${juntaId}.${extension}`;
     res.set({
       'Content-Type': mimeRespuesta,
@@ -146,6 +141,8 @@ async function finalizarJunta(req, res) {
     const resultado = await sequelize.transaction(async transaction => {
       const { junta, registro, cerrado, select, eleccionId } = await bloquearJunta(juntaId, transaction);
       if (cerrado) throw new HttpError(409, 'Esta junta ya está finalizada. No se admiten modificaciones.');
+      const cierresDignidad = await sequelize.query('SELECT registro_id FROM cf_registro_dignidad_cierres WHERE registro_id=:registroId LIMIT 1 FOR UPDATE', { ...select, replacements: { registroId: registro.id } });
+      if (cierresDignidad.length) throw new HttpError(409, 'La junta tiene cierres por dignidad. Finalice cada dignidad por separado.');
       if (String(registro.estado) !== 'CONFIRMADO') {
         throw new HttpError(409, 'Primero guarde los votos de la junta.');
       }
@@ -178,9 +175,10 @@ async function finalizarJunta(req, res) {
         Number(junta.numeracion_verificada) !== 1
       );
       const fotos = await sequelize.query(`
-        SELECT sha256 FROM cf_registro_evidencias WHERE registro_id = :registroId LIMIT 1
+        SELECT sha256, ruta_archivo, mime, tamano_bytes FROM cf_registro_evidencias WHERE registro_id = :registroId LIMIT 1
       `, { ...select, replacements: { registroId: registro.id } });
       if (!fotos.length) throw new HttpError(409, 'Adjunte una fotografía del acta antes de finalizar.');
+      try { await storage.leer(fotos[0]); } catch { throw new HttpError(409, 'La fotografía no está disponible o no supera la verificación de integridad.'); }
       const candidatos = await sequelize.query(`
         SELECT id, nombre, tipo, numero_lista, ambito FROM cf_candidatos
         WHERE eleccion_id = :eleccionId AND activo = 1

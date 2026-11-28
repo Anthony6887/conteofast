@@ -135,6 +135,8 @@ app.use((error, _req, res, _next) => {
         });
     }
 
+    if (error.status === 413) return res.status(413).json({ ok: false, message: 'La fotografía supera el tamaño permitido.' });
+
     if (error instanceof SyntaxError && error.status === 400) {
         return res.status(400).json({
             ok: false,
@@ -155,6 +157,14 @@ app.use((error, _req, res, _next) => {
 async function iniciar() {
     try {
         await db.sequelize.authenticate();
+        await require('./services/evidencias-storage').inicializar();
+        // No iniciar con el esquema antiguo: evitar guardar imágenes en MySQL.
+        for (const tabla of ['cf_registro_evidencias', 'cf_registro_dignidad_evidencias']) {
+            const [columnas] = await db.sequelize.query(`SHOW COLUMNS FROM ${tabla}`);
+            if (!columnas.some(c => c.Field === 'ruta_archivo') || columnas.some(c => c.Field === 'imagen')) {
+                throw new Error(`Migración de evidencias pendiente en ${tabla}.`);
+            }
+        }
 
         console.log('');
         console.log('====================================');
@@ -176,6 +186,7 @@ async function iniciar() {
 
     } catch (error) {
         console.error('[CONTEOFAST] Error iniciando:', error);
+        await db.sequelize.close().catch(() => {});
         process.exitCode = 1;
     }
 }

@@ -189,6 +189,8 @@ export const RECINTOS_ELECTORALES: readonly RecintoElectoral[] = [
   }
 ] as const;
 
+export const LISTAS_ALCALDES: readonly string[] = ["3", "4", "6-8", "7", "18", "20", "21", "61", "62"];
+
 export const LISTAS_CONCEJALES: Record<AmbitoRecinto, readonly string[]> = {
   "URBANO": [
     "3",

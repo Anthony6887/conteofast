@@ -2,6 +2,7 @@
 
 // Las rutas de este controlador exigen autenticación y autorización en producción.
 const crypto = require('node:crypto');
+const storage = require('../services/evidencias-storage');
 const { QueryTypes } = require('sequelize');
 const { sequelize } = require('../models');
 const { _internals: reglas } = require('./conteofast.controller');
@@ -80,11 +81,11 @@ async function estado(req, res) {
     if (registro) {
       const [extras, fotos, cierres] = await Promise.all([
         sequelize.query('SELECT tipo FROM cf_registro_dignidad_guardados WHERE registro_id=:id', { ...select, replacements: { id: registro.id } }),
-        sequelize.query('SELECT tipo FROM cf_registro_dignidad_evidencias WHERE registro_id=:id', { ...select, replacements: { id: registro.id } }),
+        sequelize.query('SELECT tipo,ruta_archivo,tamano_bytes FROM cf_registro_dignidad_evidencias WHERE registro_id=:id', { ...select, replacements: { id: registro.id } }),
         sequelize.query('SELECT tipo,fecha_cierre FROM cf_registro_dignidad_cierres WHERE registro_id=:id', { ...select, replacements: { id: registro.id } })
       ]);
       for (const x of extras) if (salida[x.tipo]) salida[x.tipo].guardado = true;
-      for (const x of fotos) if (salida[x.tipo]) salida[x.tipo].foto = true;
+      for (const x of fotos) if (salida[x.tipo]) salida[x.tipo].foto = await storage.disponible(x);
       for (const x of cierres) if (salida[x.tipo]) { salida[x.tipo].finalizado = true; salida[x.tipo].fecha_cierre = x.fecha_cierre; }
       const global = await sequelize.query('SELECT registro_id FROM cf_registro_cierres WHERE registro_id=:id LIMIT 1', {
         ...select, replacements: { id: registro.id }
@@ -196,7 +197,7 @@ async function subirFoto(req, res) {
     }
     const foto = req.body;
     await sequelize.transaction(async transaction => {
-      const { registro, recinto, select } = await contexto(juntaId, transaction, true);
+      const { junta, registro, recinto, select } = await contexto(juntaId, transaction, true);
       await verificarTipo(recinto, tipo);
       if (!registro) throw new HttpError(409, 'Guarde primero los votos de esta dignidad.');
       await verificarSinCierreGlobal(registro.id, select);
@@ -207,15 +208,16 @@ async function subirFoto(req, res) {
         ...select, replacements: { id: registro.id, tipo }
       });
       if (!especial.length) throw new HttpError(409, 'Guarde primero los votos de esta dignidad.');
+      const ruta = await storage.guardar({ eleccionId: eleccionId(), recintoId: junta.recinto_id, juntaId, registroId: registro.id, tipo, foto, mime: 'image/png' });
       await sequelize.query(`INSERT INTO cf_registro_dignidad_evidencias
-        (registro_id,tipo,nombre_archivo,mime,tamano_bytes,sha256,imagen)
-        VALUES ($registroId,$tipo,$nombre,'image/png',$bytes,$hash,$foto)
+        (registro_id,tipo,nombre_archivo,mime,tamano_bytes,sha256,ruta_archivo)
+        VALUES ($registroId,$tipo,$nombre,'image/png',$bytes,$hash,$ruta)
         ON DUPLICATE KEY UPDATE nombre_archivo=VALUES(nombre_archivo),mime=VALUES(mime),
-          tamano_bytes=VALUES(tamano_bytes),sha256=VALUES(sha256),imagen=VALUES(imagen),actualizado_en=CURRENT_TIMESTAMP`, {
-        transaction, bind: { registroId: registro.id, tipo, nombre: `acta_${tipo.toLowerCase()}.png`, bytes: foto.length, hash: hash(foto), foto }
+          tamano_bytes=VALUES(tamano_bytes),sha256=VALUES(sha256),ruta_archivo=VALUES(ruta_archivo),actualizado_en=CURRENT_TIMESTAMP`, {
+        transaction, bind: { registroId: registro.id, tipo, nombre: `acta_${tipo.toLowerCase()}.png`, bytes: foto.length, hash: hash(foto), ruta }
       });
     });
-    return res.json({ ok: true, message: `Fotografía de ${tipo} guardada.`, data: { sha256: hash(foto) } });
+    return res.json({ ok: true, message: `Fotografía de ${tipo} guardada.`, data: { sha256: hash(foto), mime: 'image/png', bytes: foto.length } });
   } catch (e) { return responder(res, e, 'subirFoto'); }
 }
 async function obtenerFoto(req, res) {
@@ -223,16 +225,17 @@ async function obtenerFoto(req, res) {
     const juntaId = validarId(req), tipo = validarTipo(req);
     const { registro } = await contexto(juntaId);
     if (!registro) throw new HttpError(404, 'No hay fotografía de esta dignidad.');
-    const rows = await sequelize.query(`SELECT imagen FROM cf_registro_dignidad_evidencias
+    const rows = await sequelize.query(`SELECT ruta_archivo,sha256,mime,tamano_bytes FROM cf_registro_dignidad_evidencias
       WHERE registro_id=:id AND tipo=:tipo LIMIT 1`, {
       type: QueryTypes.SELECT, replacements: { id: registro.id, tipo }
     });
     if (!rows.length) throw new HttpError(404, 'No existe fotografía de esta dignidad.');
-    const foto = Buffer.isBuffer(rows[0].imagen) ? rows[0].imagen : Buffer.from(rows[0].imagen);
+    const foto = await storage.leer(rows[0]);
+    const extension = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' }[rows[0].mime];
     res.set({
-      'Content-Type': 'image/png', 'Content-Length': String(foto.length), 'Cache-Control': 'private,no-store',
+      'Content-Type': rows[0].mime, 'Content-Length': String(foto.length), 'Cache-Control': 'private,no-store',
       'X-Content-Type-Options': 'nosniff',
-      'Content-Disposition': `inline; filename="acta_${juntaId}_${tipo.toLowerCase()}.png"`
+      'Content-Disposition': `inline; filename="acta_${juntaId}_${tipo.toLowerCase()}.${extension}"`
     });
     return res.end(foto);
   } catch (e) { return responder(res, e, 'obtenerFoto'); }
@@ -258,7 +261,7 @@ async function finalizar(req, res) {
         throw new HttpError(409, 'Cierre requiere padrón y numeración verificados (o permiso de pruebas en desarrollo).');
       }
       const [fotos, extras, votos, candidatos] = await Promise.all([
-        sequelize.query(`SELECT sha256 FROM cf_registro_dignidad_evidencias WHERE registro_id=:id AND tipo=:tipo`, {
+        sequelize.query(`SELECT sha256,ruta_archivo,mime,tamano_bytes FROM cf_registro_dignidad_evidencias WHERE registro_id=:id AND tipo=:tipo`, {
           ...select, replacements: { id: registro.id, tipo }
         }),
         sequelize.query(`SELECT nulos,blancos FROM cf_registro_especiales WHERE registro_id=:id AND tipo=:tipo`, {
@@ -275,6 +278,7 @@ async function finalizar(req, res) {
       });
       if (!guardado.length) throw new HttpError(409, `Guarde primero los votos de ${tipo}.`);
       if (!fotos.length) throw new HttpError(409, `Falta fotografía del acta de ${tipo}.`);
+      try { await storage.leer(fotos[0]); } catch { throw new HttpError(409, 'La fotografía no está disponible o no supera la verificación de integridad.'); }
       if (!extras.length || votos.length !== candidatos.length ||
         candidatos.some(c => !votos.some(v => Number(v.candidato_id) === Number(c.id)))) {
         throw new HttpError(409, `Faltan votos o especiales de ${tipo}.`);

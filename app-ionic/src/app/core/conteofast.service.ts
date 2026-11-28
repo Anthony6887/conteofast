@@ -214,7 +214,7 @@ export class ConteofastService {
     );
   }
 
-  /** Foto PNG binaria RAW. NO FormData ni Base64. */
+  /** PNG binario RAW; la API guarda el archivo en disco y devuelve sus metadatos. */
   subirFotoDignidad(
     juntaId: number,
     tipo: CfDignidad,
