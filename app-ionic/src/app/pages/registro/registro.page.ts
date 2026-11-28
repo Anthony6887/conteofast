@@ -992,7 +992,7 @@ export class RegistroPage implements OnInit {
 
       if (archivo.type && !['image/png', 'image/jpeg', 'image/webp'].includes(archivo.type)) {
 
-        throw new Error('El servidor no devolvió una fotografía PNG válida.');
+        throw new Error('El servidor no devolvió una fotografía válida.');
 
       }
 
@@ -1036,7 +1036,7 @@ export class RegistroPage implements OnInit {
 
   /**
    * Abre una vista previa temporal, sin imagen persistente en el formulario.
-   * Se utiliza primero el PNG local pendiente; en caso contrario, la foto
+   * Se utiliza primero la fotografía local pendiente; en caso contrario, la foto
    * confirmada de esta junta + dignidad se descarga del servidor.
    */
   async verFotografia(): Promise<void> {
@@ -1196,7 +1196,9 @@ export class RegistroPage implements OnInit {
       const foto = await Camera.getPhoto({
         source: CameraSource.Camera,
         resultType: CameraResultType.Uri,
-        quality: 100,
+        quality: 85,
+        width: 2560,
+        height: 2560,
         correctOrientation: true,
         saveToGallery: false,
         allowEditing: false,
@@ -1209,7 +1211,7 @@ export class RegistroPage implements OnInit {
 
       if (!foto.webPath) throw new Error('La cámara no devolvió la fotografía.');
       this.procesandoFoto = true;
-      const resultado = await this.convertirFotoNativaAPng(foto.webPath, id, dignidad);
+      const resultado = await this.prepararFotoNativa(foto.webPath, id, dignidad);
 
       if (this.destroyRef.destroyed || this.juntaId !== id ||
         this.dignidadSeleccionada !== dignidad || this.registroFinalizado) return;
@@ -1241,61 +1243,56 @@ export class RegistroPage implements OnInit {
     }
   }
 
-  /**
-   * Android suele devolver JPEG. El backend de ConteoFast exige PNG binario.
-   * Se transcodifica a PNG (sin aplicar compresión JPEG adicional) y se
-   * reduce progresivamente solo si el tamaño supera el límite de la API.
-   */
-  private async convertirFotoNativaAPng(
+  /** Mantiene el JPEG nativo si ya tiene tamaño adecuado; no recodifica innecesariamente. */
+  private async prepararFotoNativa(
     webPath: string, juntaId: number, dignidad: TipoDignidad
   ): Promise<{ archivo: File; resolucion: string }> {
     const respuesta = await fetch(webPath);
     if (!respuesta.ok) throw new Error('No se pudo leer la foto de la cámara nativa.');
-    const imagenOriginal = await respuesta.blob();
-    if (imagenOriginal.size < 512) throw new Error('La cámara devolvió una foto vacía.');
-
-    const urlImagen = URL.createObjectURL(imagenOriginal);
+    const original = await respuesta.blob();
+    if (original.size < 512) throw new Error('La cámara devolvió una foto vacía.');
+    const url = URL.createObjectURL(original);
     const imagen = new Image();
+    const nombre = `acta_junta_${juntaId}_${dignidad}.jpg`;
     try {
-      imagen.src = urlImagen;
+      imagen.src = url;
       await imagen.decode();
-      if (imagen.naturalWidth < 1 || imagen.naturalHeight < 1) {
-        throw new Error('La fotografía no contiene dimensiones válidas.');
+      const ancho = imagen.naturalWidth, alto = imagen.naturalHeight;
+      if (ancho < 1 || alto < 1) throw new Error('La fotografía no contiene dimensiones válidas.');
+      const firma = new Uint8Array(await original.slice(0, 3).arrayBuffer());
+      if (firma[0] === 255 && firma[1] === 216 && firma[2] === 255 &&
+          Math.max(ancho, alto) <= 2560 && original.size <= 2 * 1024 * 1024) {
+        return { archivo: new File([original], nombre, { type: 'image/jpeg' }),
+          resolucion: `${ancho} × ${alto} píxeles` };
       }
+      return await this.prepararJpeg(imagen, ancho, alto, nombre);
+    } finally { URL.revokeObjectURL(url); }
+  }
 
-      // Evitar agotar la memoria del WebView con imágenes de 50-200 MP.
-      // La cámara conserva el detalle de fotos habituales de hasta 16 MP.
-      const maxPixeles = 16_000_000;
-      let escala = Math.min(1, Math.sqrt(maxPixeles / (imagen.naturalWidth * imagen.naturalHeight)));
-      const maxBytes = 29 * 1024 * 1024; // margen frente al límite API de 30 MiB
-
-      for (let intento = 0; intento < 9; intento++) {
-        const ancho = Math.max(1, Math.round(imagen.naturalWidth * escala));
-        const alto = Math.max(1, Math.round(imagen.naturalHeight * escala));
-        const canvas = document.createElement('canvas');
-        canvas.width = ancho;
-        canvas.height = alto;
-        const contexto = canvas.getContext('2d', { alpha: false });
-        if (!contexto) throw new Error('No se pudo preparar la fotografía PNG.');
-        contexto.imageSmoothingEnabled = true;
-        contexto.imageSmoothingQuality = 'high';
-        contexto.drawImage(imagen, 0, 0, ancho, alto);
-
-        const png = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
-        canvas.width = 0;
-        canvas.height = 0;
-        if (png && png.size >= 512 && png.size <= maxBytes) {
-          return {
-            archivo: new File([png], `acta_junta_${juntaId}_${dignidad}.png`, { type: 'image/png' }),
-            resolucion: `${ancho} × ${alto} píxeles`,
-          };
-        }
-        escala *= 0.84;
+  /** Reduce el lado mayor a 2560 px, sin ampliar ni recortar el acta. */
+  private async prepararJpeg(origen: CanvasImageSource, anchoOriginal: number,
+    altoOriginal: number, nombre: string): Promise<{ archivo: File; resolucion: string }> {
+    const escala = Math.min(1, 2560 / Math.max(anchoOriginal, altoOriginal));
+    const ancho = Math.max(1, Math.round(anchoOriginal * escala));
+    const alto = Math.max(1, Math.round(altoOriginal * escala));
+    const canvas = document.createElement('canvas');
+    canvas.width = ancho;
+    canvas.height = alto;
+    try {
+      const contexto = canvas.getContext('2d', { alpha: false });
+      if (!contexto) throw new Error('No se pudo preparar la fotografía.');
+      contexto.fillStyle = '#fff';
+      contexto.fillRect(0, 0, ancho, alto);
+      contexto.imageSmoothingEnabled = true;
+      contexto.imageSmoothingQuality = 'high';
+      contexto.drawImage(origen, 0, 0, ancho, alto);
+      const jpeg = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+      if (!jpeg || jpeg.type !== 'image/jpeg' || jpeg.size < 512 || jpeg.size > 30 * 1024 * 1024) {
+        throw new Error('No se pudo generar una fotografía JPEG válida.');
       }
-      throw new Error('La fotografía supera los 30 MB. Acércate al acta y vuelve a capturarla.');
-    } finally {
-      URL.revokeObjectURL(urlImagen);
-    }
+      return { archivo: new File([jpeg], nombre, { type: 'image/jpeg' }),
+        resolucion: `${ancho} × ${alto} píxeles` };
+    } finally { canvas.width = 0; canvas.height = 0; }
   }
 
   cerrarCamara(): void { this.detenerCamara(); }
@@ -1316,7 +1313,7 @@ export class RegistroPage implements OnInit {
 
   }
 
-  /** Captura PNG local para subirlo cuando los votos ya estén guardados. */
+  /** Captura JPEG local para subirlo cuando los votos ya estén guardados. */
 
   async capturarFotografia(): Promise<void> {
 
@@ -1334,32 +1331,9 @@ export class RegistroPage implements OnInit {
 
     try {
 
-      const canvas = document.createElement('canvas');
-
-      canvas.width = video.videoWidth;
-
-      canvas.height = video.videoHeight;
-
-      const contexto = canvas.getContext('2d', { alpha: false });
-
-      if (!contexto) throw new Error('No se pudo preparar la fotografía.');
-
-      contexto.drawImage(video, 0, 0);
-
-      const png = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
-
-      canvas.width = 0;
-
-      canvas.height = 0;
-
-      if (!png || png.size < 512) throw new Error('La fotografía resultó vacía.');
-
-      const archivo = new File([png], 'acta-local.png', { type: 'image/png' });
-
-
-      this.fotoSeleccionada = archivo;
-
-      this.fotoResolucion = `${video.videoWidth} × ${video.videoHeight} píxeles`;
+      const resultado = await this.prepararJpeg(video, video.videoWidth, video.videoHeight, 'acta-local.jpg');
+      this.fotoSeleccionada = resultado.archivo;
+      this.fotoResolucion = resultado.resolucion;
 
       this.detenerCamara();
 
@@ -1403,7 +1377,7 @@ export class RegistroPage implements OnInit {
 
     enlace.href = url;
 
-    enlace.download = `acta_local_${this.codigoRecinto ?? 'recinto'}_${this.tipo ?? 'J'}${this.numeroJunta(Number(numero))}.png`;
+    enlace.download = `acta_local_${this.codigoRecinto ?? 'recinto'}_${this.tipo ?? 'J'}${this.numeroJunta(Number(numero))}.${this.fotoSeleccionada.type === 'image/jpeg' ? 'jpg' : 'png'}`;
 
     enlace.style.display = 'none';
 
@@ -1421,7 +1395,7 @@ export class RegistroPage implements OnInit {
 
   }
 
-  /** Envía el PNG binario al backend y verifica que quedó asociado a la junta. */
+  /** Envía la fotografía binaria al backend y verifica que quedó asociado a la junta. */
   async subirFotoServidor(): Promise<void> {
     if (!this.juntaId || !this.dignidadGuardada || !this.consultado ||
       this.registroFinalizado || this.guardando || this.subiendoFoto ||
@@ -1432,14 +1406,14 @@ export class RegistroPage implements OnInit {
 
     const juntaId = this.juntaId;
     const archivo = this.fotoSeleccionada;
-    if (archivo.type !== 'image/png' || archivo.size > 30 * 1024 * 1024) {
-      await this.mostrarToast('La fotografía debe ser PNG y tener menos de 30 MB.');
+    if (!['image/png', 'image/jpeg'].includes(archivo.type) || archivo.size < 512 || archivo.size > 30 * 1024 * 1024) {
+      await this.mostrarToast('La fotografía debe ser JPEG o PNG válida de máximo 30 MiB.');
       return;
     }
 
     this.subiendoFoto = true;
     try {
-      // El servicio debe enviar el File como body RAW, con Content-Type: image/png.
+      // El servicio debe enviar el File como body RAW, con Content-Type real.
       const tipo = this.dignidadSeleccionada;
       if (!tipo) throw new Error('Seleccione una dignidad.');
       const apiFoto = this.api as ConteofastService & {

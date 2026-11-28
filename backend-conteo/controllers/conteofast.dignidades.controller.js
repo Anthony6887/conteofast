@@ -6,7 +6,7 @@ const storage = require('../services/evidencias-storage');
 const { QueryTypes } = require('sequelize');
 const { sequelize } = require('../models');
 const { _internals: reglas } = require('./conteofast.controller');
-const MAX_PNG = 30 * 1024 * 1024;
+const MAX_FOTO_BYTES = 30 * 1024 * 1024;
 const TIPOS = ['ALCALDE', 'CONCEJAL', 'VOCAL'];
 const hash = v => crypto.createHash('sha256').update(v).digest('hex');
 class HttpError extends Error {
@@ -190,12 +190,16 @@ async function guardar(req, res) {
 async function subirFoto(req, res) {
   try {
     const juntaId = validarId(req), tipo = validarTipo(req);
-    if (!Buffer.isBuffer(req.body) || req.body.length < 512 || req.body.length > MAX_PNG ||
-      !req.body.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex')) ||
-      String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase() !== 'image/png') {
-      throw new HttpError(415, 'Enviar PNG binario válido de máximo 30 MiB.');
+    if (!Buffer.isBuffer(req.body) || req.body.length < 512 || req.body.length > MAX_FOTO_BYTES) {
+      throw new HttpError(400, 'Enviar JPEG o PNG binario válido de máximo 30 MiB.');
     }
     const foto = req.body;
+    const mime = storage.mimeDe(foto);
+    const declarado = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+    if (!['image/png', 'image/jpeg'].includes(mime) || mime !== declarado) {
+      throw new HttpError(415, 'El formato de la fotografía debe coincidir con Content-Type (JPEG o PNG).');
+    }
+    const extension = mime === 'image/jpeg' ? 'jpg' : 'png';
     await sequelize.transaction(async transaction => {
       const { junta, registro, recinto, select } = await contexto(juntaId, transaction, true);
       await verificarTipo(recinto, tipo);
@@ -208,16 +212,16 @@ async function subirFoto(req, res) {
         ...select, replacements: { id: registro.id, tipo }
       });
       if (!especial.length) throw new HttpError(409, 'Guarde primero los votos de esta dignidad.');
-      const ruta = await storage.guardar({ eleccionId: eleccionId(), recintoId: junta.recinto_id, juntaId, registroId: registro.id, tipo, foto, mime: 'image/png' });
+      const ruta = await storage.guardar({ eleccionId: eleccionId(), recintoId: junta.recinto_id, juntaId, registroId: registro.id, tipo, foto, mime });
       await sequelize.query(`INSERT INTO cf_registro_dignidad_evidencias
         (registro_id,tipo,nombre_archivo,mime,tamano_bytes,sha256,ruta_archivo)
-        VALUES ($registroId,$tipo,$nombre,'image/png',$bytes,$hash,$ruta)
+        VALUES ($registroId,$tipo,$nombre,$mime,$bytes,$hash,$ruta)
         ON DUPLICATE KEY UPDATE nombre_archivo=VALUES(nombre_archivo),mime=VALUES(mime),
           tamano_bytes=VALUES(tamano_bytes),sha256=VALUES(sha256),ruta_archivo=VALUES(ruta_archivo),actualizado_en=CURRENT_TIMESTAMP`, {
-        transaction, bind: { registroId: registro.id, tipo, nombre: `acta_${tipo.toLowerCase()}.png`, bytes: foto.length, hash: hash(foto), ruta }
+        transaction, bind: { registroId: registro.id, tipo, nombre: `acta_${tipo.toLowerCase()}.${extension}`, mime, bytes: foto.length, hash: hash(foto), ruta }
       });
     });
-    return res.json({ ok: true, message: `Fotografía de ${tipo} guardada.`, data: { sha256: hash(foto), mime: 'image/png', bytes: foto.length } });
+    return res.json({ ok: true, message: `Fotografía de ${tipo} guardada.`, data: { sha256: hash(foto), mime, bytes: foto.length } });
   } catch (e) { return responder(res, e, 'subirFoto'); }
 }
 async function obtenerFoto(req, res) {

@@ -150,7 +150,7 @@ export class ConteofastService {
       this.http.post<ApiRespuesta<{ mime: string; bytes: number; sha256: string }>>(
         `${this.base}/registro/${juntaId}/foto`,
         foto,
-        { headers: new HttpHeaders({ 'Content-Type': 'image/png' }) }
+        { headers: new HttpHeaders({ 'Content-Type': foto.type }) }
       ).pipe(timeout({ first: 120000 }))
     );
   }
@@ -214,23 +214,23 @@ export class ConteofastService {
     );
   }
 
-  /** PNG binario RAW; la API guarda el archivo en disco y devuelve sus metadatos. */
+  /** JPEG o PNG binario RAW; la API guarda el archivo en disco y devuelve sus metadatos. */
   subirFotoDignidad(
     juntaId: number,
     tipo: CfDignidad,
     foto: Blob
   ): Promise<ApiRespuesta<{ mime: string; bytes: number; sha256: string }>> {
-    if (foto.type !== 'image/png') {
-      return Promise.reject(new Error('La fotografía debe estar en formato PNG.'));
+    if (!['image/png', 'image/jpeg'].includes(foto.type)) {
+      return Promise.reject(new Error('La fotografía debe estar en formato JPEG o PNG.'));
     }
     if (foto.size < 512 || foto.size > 30 * 1024 * 1024) {
-      return Promise.reject(new Error('El PNG debe tener entre 512 bytes y 30 MiB.'));
+      return Promise.reject(new Error('La fotografía debe tener entre 512 bytes y 30 MiB.'));
     }
     return firstValueFrom(
       this.http.post<ApiRespuesta<{ mime: string; bytes: number; sha256: string }>>(
         `${this.base}/registro/${juntaId}/dignidad/${tipo}/foto`,
         foto,
-        { headers: new HttpHeaders({ 'Content-Type': 'image/png' }) }
+        { headers: new HttpHeaders({ 'Content-Type': foto.type }) }
       ).pipe(timeout({ first: 120000 }))
     );
   }

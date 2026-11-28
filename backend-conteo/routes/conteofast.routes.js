@@ -6,12 +6,12 @@ const router = express.Router();
 router.get('/catalogos', controller.catalogos);
 router.get('/resumen', controller.resumen);
 router.get('/recintos-estado', controller.recintosEstado);
-// PNG sin pérdida, cuerpo binario. Máximo 30 MiB.
+// JPEG o PNG, cuerpo binario. Máximo 30 MiB.
 router.post('/registro/:juntaId/foto',
-  express.raw({ type: 'image/png', limit: '30mb' }),
+  express.raw({ type: ['image/png', 'image/jpeg'], limit: '30mb' }),
   actas.subirFoto);
 router.get('/registro/:juntaId/foto', actas.obtenerFoto);
-// Descarga con Content-Disposition: attachment, filename=acta_junta_ID.png
+// Descarga con Content-Disposition: attachment, nombre según formato
 router.get('/registro/:juntaId/foto/descargar', actas.descargarFoto);
 router.post('/registro/:juntaId/finalizar', actas.finalizarJunta);
 router.get('/registro/:juntaId', controller.registroPorJunta);
@@ -23,7 +23,7 @@ const dignidades = require('../controllers/conteofast.dignidades.controller');
 router.get('/registro/:juntaId/dignidades', dignidades.estado);
 router.put('/registro/:juntaId/dignidad/:tipo', express.json(), dignidades.guardar);
 router.post('/registro/:juntaId/dignidad/:tipo/foto',
-  express.raw({ type: 'image/png', limit: '30mb' }), dignidades.subirFoto);
+  express.raw({ type: ['image/png', 'image/jpeg'], limit: '30mb' }), dignidades.subirFoto);
 router.get('/registro/:juntaId/dignidad/:tipo/foto', dignidades.obtenerFoto);
 router.post('/registro/:juntaId/dignidad/:tipo/finalizar', dignidades.finalizar);
 

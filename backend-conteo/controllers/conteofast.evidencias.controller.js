@@ -14,7 +14,7 @@ const { sequelize } = require('../models');
 const { _internals: reglas } = require('./conteofast.controller');
 
 const MAX_FOTO_BYTES = 30 * 1024 * 1024;
-const TIPOS_MIME = new Set(['image/png']);
+const TIPOS_MIME = new Set(['image/png', 'image/jpeg']);
 
 class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status; }
@@ -73,13 +73,14 @@ async function subirFoto(req, res) {
     const juntaId = idValido(req.params.juntaId);
     if (!juntaId) throw new HttpError(400, 'ID de junta inválido.');
     if (!Buffer.isBuffer(req.body) || req.body.length < 512 || req.body.length > MAX_FOTO_BYTES) {
-      throw new HttpError(400, 'Envíe una fotografía PNG válida de máximo 30 MB.');
+      throw new HttpError(400, 'Envíe una fotografía JPEG o PNG válida de máximo 30 MB.');
     }
     const mime = detectarMime(req.body);
     const tipoDeclarado = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
     if (!mime || !TIPOS_MIME.has(tipoDeclarado) || mime !== tipoDeclarado) {
-      throw new HttpError(415, 'Solo se admite PNG sin pérdida. Selecciona la foto desde ConteoFast para convertirla.');
+      throw new HttpError(415, 'El formato debe coincidir con Content-Type (JPEG o PNG).');
     }
+    const nombre = mime === 'image/jpeg' ? 'acta.jpg' : 'acta.png';
     const huella = sha256(req.body);
     const bytes = req.body.length;
     await sequelize.transaction(async transaction => {
@@ -89,13 +90,13 @@ async function subirFoto(req, res) {
       await sequelize.query(`
         INSERT INTO cf_registro_evidencias
           (registro_id, nombre_archivo, mime, tamano_bytes, sha256, ruta_archivo)
-        VALUES ($registroId, 'acta.png', $mime, $bytes, $huella, $ruta)
+        VALUES ($registroId, $nombre, $mime, $bytes, $huella, $ruta)
         ON DUPLICATE KEY UPDATE
           nombre_archivo = VALUES(nombre_archivo),
           mime = VALUES(mime), tamano_bytes = VALUES(tamano_bytes),
           sha256 = VALUES(sha256), ruta_archivo = VALUES(ruta_archivo),
           actualizado_en = CURRENT_TIMESTAMP
-      `, { transaction, bind: { registroId: registro.id, mime, bytes, huella, ruta } });
+      `, { transaction, bind: { registroId: registro.id, nombre, mime, bytes, huella, ruta } });
     });
     res.set('Cache-Control', 'no-store');
     return res.json({ ok: true, message: 'Fotografía del acta guardada.', data: { mime, bytes, sha256: huella } });
