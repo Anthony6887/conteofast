@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ChangeEvent } from 'react';
 import Image from 'next/image';
 import type { CandidatoResultado } from '../../lib/electoral';
-import { BASE_PATH, numero } from '../../lib/electoral';
+import { BASE_PATH } from '../../lib/electoral';
 import type { DatosRecintos, JuntaEstado, RecintoEstado } from '../../lib/recintos-estado';
 import { estaFinalizada, etiquetaJunta } from '../../lib/recintos-estado';
 import { construirResumenActa, type TipoActa, type RegistroActa, type RespuestaRegistro } from '../../lib/revision-actas';
+import type { IndiceActas } from '../../lib/indice-actas';
 import './revision-actas.css';
 
 type Props = {
@@ -17,7 +18,6 @@ type Props = {
   onActualizar: () => void;
 };
 
-type EstadoFoto = 'disponible' | 'sin-foto' | 'desconocido';
 
 // Consultar parámetros de URL sin setState en un efecto y sin provocar
 // diferencias entre el renderizado del servidor y la hidratación.
@@ -34,10 +34,8 @@ function buscarEnServidor(): string {
   return '';
 }
 
-/** Nunca mostrar una junta sin fotografía confirmada en la revisión. */
-function fotoDisponible(junta: JuntaEstado, indice: Record<string, EstadoFoto>): boolean {
-  const estado = indice[junta.id];
-  return estado === 'disponible' || (estado !== 'sin-foto' && junta.tiene_foto === true);
+function fotoDisponible(junta: JuntaEstado, indice: IndiceActas): boolean {
+  return (indice[junta.id]?.length ?? 0) > 0;
 }
 const rutaRegistro = (id: string) => `${BASE_PATH}/api/actas/junta/${encodeURIComponent(id)}`;
 const rutaFoto = (id: string, tipo?: TipoActa) =>
@@ -47,10 +45,6 @@ function tiposConFoto(registro: RegistroActa | null): TipoActa[] {
   if (!registro?.dignidades) return [];
   return tiposActa.filter(tipo => registro.dignidades?.[tipo]?.foto === true);
 }
-function existeFoto(registro: RegistroActa | null): boolean {
-  return tiposConFoto(registro).length > 0 || registro?.evidencia?.disponible === true;
-}
-
 async function consultaRegistro(id: string, signal?: AbortSignal): Promise<RegistroActa | null> {
   const res = await fetch(rutaRegistro(id), { cache: 'no-store', signal });
   const json = (await res.json().catch(() => null)) as RespuestaRegistro | null;
@@ -65,11 +59,10 @@ function etiquetaEstado(junta: JuntaEstado): string {
   return 'Pendiente';
 }
 
-function PanelDetalle({ recinto, junta, candidatos, onFoto }: {
+function PanelDetalle({ recinto, junta, candidatos }: {
   recinto: RecintoEstado;
   junta: JuntaEstado;
   candidatos: CandidatoResultado[];
-  onFoto: (juntaId: string, disponible: EstadoFoto) => void;
 }) {
   const [registro, setRegistro] = useState<RegistroActa | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -77,7 +70,7 @@ function PanelDetalle({ recinto, junta, candidatos, onFoto }: {
   const [ampliar, setAmpliar] = useState(false);
   const [errorImagen, setErrorImagen] = useState(false);
   const [actualizar, setActualizar] = useState(0);
-  const [tipoElegido, setTipoElegido] = useState<TipoActa | null>(null);
+  const [tipoElegido, setTipoElegido] = useState<TipoActa | 'GENERAL' | null>(null);
 
   // PanelDetalle se monta con key={junta.id}; cada junta comienza
   // con su propio estado inicial. El efecto solo recibe respuestas asíncronas.
@@ -88,7 +81,6 @@ function PanelDetalle({ recinto, junta, candidatos, onFoto }: {
       .then(resultado => {
         if (ctrl.signal.aborted) return;
         setRegistro(resultado);
-        onFoto(junta.id, existeFoto(resultado) ? 'disponible' : 'sin-foto');
       })
       .catch(e => {
         if (!ctrl.signal.aborted) {
@@ -100,7 +92,7 @@ function PanelDetalle({ recinto, junta, candidatos, onFoto }: {
       });
 
     return () => ctrl.abort();
-  }, [junta.id, actualizar, onFoto]);
+  }, [junta.id, actualizar]);
 
   const reintentar = () => {
     setCargando(true);
@@ -123,8 +115,10 @@ function PanelDetalle({ recinto, junta, candidatos, onFoto }: {
     : (['PELILEO', 'PELILEO GRANDE /R. MINO'].includes(recinto.parroquia.trim().toUpperCase()) ? 'URBANO' : 'RURAL');
   const resumenes = registro ? construirResumenActa(registro, candidatos, ambito) : [];
   const disponibles = tiposConFoto(registro);
-  const tipoActivo = tipoElegido && disponibles.includes(tipoElegido) ? tipoElegido : disponibles[0] ?? null;
-  const tieneFoto = (tipoActivo !== null || registro?.evidencia?.disponible === true) && !errorImagen;
+  const tipoActivo = tipoElegido === 'GENERAL' && registro?.evidencia?.disponible === true
+    ? null : tipoElegido && tipoElegido !== 'GENERAL' && disponibles.includes(tipoElegido) ? tipoElegido : disponibles[0] ?? null;
+  const fotoRegistrada = tipoActivo !== null || registro?.evidencia?.disponible === true;
+  const tieneFoto = fotoRegistrada && !errorImagen;
   const foto = rutaFoto(junta.id, tipoActivo ?? undefined);
   const resumenActivo = tipoActivo ? resumenes.find(r => r.tipo === tipoActivo) : null;
 
@@ -145,7 +139,10 @@ function PanelDetalle({ recinto, junta, candidatos, onFoto }: {
       {error && <div className="ar-alerta" role="alert">{error}<button type="button" onClick={reintentar}>Reintentar</button></div>}
       {!cargando && !error && !registro && <p className="ar-mensaje">Esta junta aún no tiene votos registrados ni acta asociada.</p>}
       {registro && <>
-        {disponibles.length > 0 && <div className="ar-juntas-botones" role="group" aria-label="Dignidad del acta">
+        {(disponibles.length > 0 || registro.evidencia?.disponible === true) && <div className="ar-juntas-botones" role="group" aria-label="Dignidad del acta">
+          {registro.evidencia?.disponible === true && <button type="button" aria-pressed={tipoActivo === null}
+            className={`ar-junta-boton ${tipoActivo === null ? 'ar-junta-boton--activo' : ''}`}
+            onClick={() => { setTipoElegido('GENERAL'); setErrorImagen(false); setAmpliar(false); }}>Acta general</button>}
           {disponibles.map(tipo => <button type="button" key={tipo} aria-pressed={tipoActivo === tipo}
             className={`ar-junta-boton ${tipoActivo === tipo ? 'ar-junta-boton--activo' : ''}`}
             onClick={() => { setTipoElegido(tipo); setErrorImagen(false); setAmpliar(false); }}>
@@ -159,8 +156,8 @@ function PanelDetalle({ recinto, junta, candidatos, onFoto }: {
         </div>}
         <div className="ar-acta">
           <div className="ar-titulo-foto">
-            <div><strong>Fotografía del acta</strong><small>Consulta del archivo original almacenado en ConteoFast</small></div>
-            <span className={`ar-foto-estado ${tieneFoto ? 'ar-foto-estado--ok' : ''}`}>{tieneFoto ? 'PNG cargado' : 'Sin fotografía'}</span>
+            <div><strong>Fotografía del acta</strong><small>Archivo original del servidor ConteoFast</small></div>
+            <span className={`ar-foto-estado ${tieneFoto ? 'ar-foto-estado--ok' : ''}`}>{tieneFoto ? 'Acta disponible' : errorImagen ? 'Error de carga' : 'Sin fotografía'}</span>
           </div>
           {tieneFoto ? <>
             <button type="button" className="ar-foto-pulsable" onClick={() => setAmpliar(true)} aria-label="Ampliar la fotografía del acta">
@@ -168,8 +165,8 @@ function PanelDetalle({ recinto, junta, candidatos, onFoto }: {
                 className="ar-foto" onError={() => setErrorImagen(true)} />
               <span>Ampliar fotografía</span>
             </button>
-            <a className="ar-descarga" href={`${foto}${foto.includes('?') ? '&' : '?'}descargar=1`} download={`acta_junta_${junta.id}${tipoActivo ? `_${tipoActivo}` : ''}.png`}>Descargar acta</a>
-          </> : <div className="ar-foto-vacia">📷 <span>No hay una fotografía disponible para consultar.</span></div>}
+            <a className="ar-descarga" href={`${foto}${foto.includes('?') ? '&' : '?'}descargar=1`} download>Descargar acta</a>
+          </> : <div className="ar-foto-vacia">📷 <span>{errorImagen ? 'No se pudo abrir el archivo. Comprueba la conexión y la integridad del acta.' : 'No hay una fotografía disponible para consultar.'}</span>{errorImagen && <button type="button" className="ar-actualizar" onClick={reintentar}>Reintentar</button>}</div>}
         </div>
 
       </>}
@@ -190,75 +187,44 @@ export default function RevisionActas({ datos, candidatos, cargando, error, onAc
   const [buscar, setBuscar] = useState('');
   const [recintoId, setRecintoId] = useState<string | null>(null);
   const [juntaId, setJuntaId] = useState<string | null>(null);
-  const [fotos, setFotos] = useState<Record<string, EstadoFoto>>({});
+  const [fotos, setFotos] = useState<IndiceActas>({});
   const [revisionNumero, setRevisionNumero] = useState(0);
-  const [comprobando, setComprobando] = useState(false);
-  const [comprobados, setComprobados] = useState(0);
-  const fotosRef = useRef(fotos);
-  const onFoto = useCallback((id: string, disponible: EstadoFoto) => {
-    fotosRef.current = { ...fotosRef.current, [id]: disponible };
-    setFotos(prev => prev[id] === disponible ? prev : { ...prev, [id]: disponible });
-  }, []);
+  const [comprobando, setComprobando] = useState(true);
+  const [errorIndice, setErrorIndice] = useState('');
 
-  // Incluir todas las juntas: el estado legado puede figurar PENDIENTE
-  // aunque una dignidad haya sido guardada mediante la API nueva.
-  const juntasConRegistro = useMemo(() => (datos?.recintos || [])
-    .flatMap(r => r.juntas).map(j => j.id).sort(), [datos]);
-  const idsRevision = juntasConRegistro.join('|');
-
-  // Índice ligero de fotografías: solo consulta el JSON de cada junta, nunca el PNG.
-  // Se controla la concurrencia y se reconsulta únicamente al solicitar actualización.
+  // Un índice de metadatos por consulta, no una petición por cada junta.
   useEffect(() => {
     const ctrl = new AbortController();
-
-    // El inicio del proceso se notifica en una microtarea, nunca
-    // mediante setState síncrono en el cuerpo del efecto.
-    void Promise.resolve().then(async () => {
-      if (ctrl.signal.aborted) return;
-
-      const ids = idsRevision ? idsRevision.split('|') : [];
-      const pendientes = ids.filter(id => !fotosRef.current[id]);
-      const yaRevisados = ids.length - pendientes.length;
-
-      setComprobados(yaRevisados);
-      setComprobando(pendientes.length > 0);
-      if (!pendientes.length) return;
-
-      let siguiente = 0;
-      let completados = 0;
-      const trabajar = async () => {
-        while (!ctrl.signal.aborted && siguiente < pendientes.length) {
-          const id = pendientes[siguiente++];
-          try {
-            const resultado = await consultaRegistro(id, ctrl.signal);
-            if (!ctrl.signal.aborted) {
-              onFoto(id, existeFoto(resultado) ? 'disponible' : 'sin-foto');
-            }
-          } catch {
-            // Un fallo de red no significa que la junta carezca de fotografía.
-          }
-          if (ctrl.signal.aborted) break;
-          completados++;
-          setComprobados(yaRevisados + completados);
-        }
-      };
-
+    let ocupada = false;
+    async function actualizarIndice() {
+      if (ocupada || ctrl.signal.aborted) return;
+      ocupada = true;
+      setComprobando(true);
       try {
-        await Promise.all(
-          Array.from({ length: Math.min(4, pendientes.length) }, () => trabajar())
-        );
+        const respuesta = await fetch(`${BASE_PATH}/api/actas/indice`, {
+          cache: 'no-store', signal: ctrl.signal,
+        });
+        const json = await respuesta.json();
+        if (!respuesta.ok || json?.ok !== true || !json.data || typeof json.data !== 'object' || Array.isArray(json.data)) {
+          throw new Error(json?.message || 'No se pudo consultar el índice de actas.');
+        }
+        if (!ctrl.signal.aborted) { setFotos(json.data as IndiceActas); setErrorIndice(''); }
+      } catch (e) {
+        if (!ctrl.signal.aborted) setErrorIndice(e instanceof Error ? e.message : 'Error consultando actas.');
       } finally {
+        ocupada = false;
         if (!ctrl.signal.aborted) setComprobando(false);
       }
-    });
-
-    return () => ctrl.abort();
-  }, [idsRevision, revisionNumero, onFoto]);
+    }
+    void Promise.resolve().then(actualizarIndice);
+    const timer = window.setInterval(() => { if (!document.hidden) void actualizarIndice(); }, 15000);
+    return () => { ctrl.abort(); window.clearInterval(timer); };
+  }, [revisionNumero, datos?.eleccion_id]);
 
   const recintos = useMemo(() => datos?.recintos || [], [datos]);
 
   // En Resumen electoral se muestran SOLAMENTE recintos con fotografías de actas.
-  // El índice se alimenta de los metadatos de registro, no de descargar todos los PNG.
+  // El índice se alimenta de metadatos de las actas, sin descargar imágenes.
   const recintosConFoto = useMemo(() => recintos.filter(r =>
     r.juntas.some(j => fotoDisponible(j, fotos))
   ), [recintos, fotos]);
@@ -284,15 +250,7 @@ export default function RevisionActas({ datos, candidatos, cargando, error, onAc
   const juntasConFoto = recintoSeleccionado?.juntas.filter(j => fotoDisponible(j, fotos)) || [];
   const juntaSeleccionada = juntasConFoto.find(j => j.id === juntaDeseada) || juntasConFoto[0] || null;
 
-  const totalFotos = recintos.reduce((suma, r) => suma + r.juntas.filter(j => fotoDisponible(j, fotos)).length, 0);
-  const totalFinalizadasConFoto = recintos.reduce((suma, r) => suma + r.juntas.filter(j =>
-    fotoDisponible(j, fotos) && estaFinalizada(j)
-  ).length, 0);
-  const totalConocido = juntasConRegistro.filter(id => fotos[id] && fotos[id] !== 'desconocido').length;
   const revisarDeNuevo = () => {
-    fotosRef.current = {};
-    setFotos({});
-    setComprobados(0);
     setComprobando(true);
     setRevisionNumero(v => v + 1);
     onActualizar();
@@ -304,6 +262,7 @@ export default function RevisionActas({ datos, candidatos, cargando, error, onAc
       <button type="button" className="ar-actualizar" onClick={revisarDeNuevo} disabled={comprobando}>↻ Verificar actas</button>
     </header>
     {error && <p className="ar-alerta" role="alert">{error}</p>}
+    {errorIndice && <p className="ar-alerta" role="alert">{errorIndice} Se conserva el último índice recibido, si existe.</p>}
     {!datos && cargando && <p className="ar-mensaje">Cargando recintos y juntas…</p>}
     {!datos && !cargando && !error && <p className="ar-mensaje">No hay datos de recintos disponibles.</p>}
     {datos && <>
@@ -316,7 +275,7 @@ export default function RevisionActas({ datos, candidatos, cargando, error, onAc
           <div className="ar-recintos-topo"><strong>Recintos electorales</strong><span>{visibilidad.length}</span></div>
           <div className="ar-recintos-lista">
             {visibilidad.map(recinto => {
-              const fotosRecinto = recinto.juntas.filter(j => fotoDisponible(j, fotos)).length;
+              const fotosRecinto = recinto.juntas.reduce((total, j) => total + (fotos[j.id]?.length ?? 0), 0);
               const seleccionado = recintoSeleccionado?.id === recinto.id;
               return <button key={recinto.id} type="button" className={`ar-recinto-opcion ${seleccionado ? 'ar-recinto-opcion--activo' : ''}`}
                 aria-pressed={seleccionado} onClick={() => { setRecintoId(recinto.id); setJuntaId(recinto.juntas.find(j => fotoDisponible(j, fotos))?.id || null); }}>
@@ -333,7 +292,7 @@ export default function RevisionActas({ datos, candidatos, cargando, error, onAc
             <div className="ar-juntas-encabezado">
               <div><span className="ar-sobrelinea">{recintoSeleccionado.parroquia} · CÓDIGO {recintoSeleccionado.codigo_recinto ?? '—'}</span>
                 <h3>{recintoSeleccionado.nombre}</h3><small>{recintoSeleccionado.direccion}</small></div>
-              <strong>📷 {juntasConFoto.length} acta{juntasConFoto.length === 1 ? '' : 's'}</strong>
+              <strong>📷 {juntasConFoto.reduce((total, j) => total + (fotos[j.id]?.length ?? 0), 0)} actas</strong>
             </div>
             <div className="ar-juntas-botones" role="group" aria-label="Seleccionar junta para revisar">
               {juntasConFoto.map(junta => {
@@ -345,8 +304,8 @@ export default function RevisionActas({ datos, candidatos, cargando, error, onAc
                 </button>;
               })}
             </div>
-            {juntaSeleccionada && <PanelDetalle key={juntaSeleccionada.id} recinto={recintoSeleccionado} junta={juntaSeleccionada}
-              candidatos={candidatos} onFoto={onFoto} />}
+            {juntaSeleccionada && <PanelDetalle key={`${juntaSeleccionada.id}:${JSON.stringify(fotos[juntaSeleccionada.id])}:${revisionNumero}`} recinto={recintoSeleccionado} junta={juntaSeleccionada}
+              candidatos={candidatos} />}
           </> : <p className="ar-mensaje">Selecciona un recinto para comenzar.</p>}
         </div>
       </div>

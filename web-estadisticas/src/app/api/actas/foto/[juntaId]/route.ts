@@ -21,7 +21,7 @@ export async function GET(request: Request, contexto: { params: Promise<{ juntaI
   try {
     const endpoint = tipo ? `registro/${juntaId}/dignidad/${tipo}/foto` : `registro/${juntaId}/foto${descargar ? '/descargar' : ''}`;
     const backend = await fetch(urlApiConteoFast(endpoint), {
-      cache: 'no-store', signal: AbortSignal.timeout(20000),
+      cache: 'no-store', headers: { Accept: 'image/png, image/jpeg, image/webp', 'Accept-Encoding': 'identity' }, signal: AbortSignal.timeout(60000),
     });
     if (backend.status === 404) {
       return NextResponse.json({ ok: false, message: 'Esta junta aún no tiene fotografía.' },
@@ -41,7 +41,7 @@ export async function GET(request: Request, contexto: { params: Promise<{ juntaI
     headers.set('Content-Type', mime);
     headers.set('Content-Disposition', `${descargar ? 'attachment' : 'inline'}; filename="acta_junta_${juntaId}${tipo ? `_${tipo}` : ''}.${ext}"`);
     const tamaño = backend.headers.get('content-length');
-    if (tamaño && /^\d+$/.test(tamaño)) headers.set('Content-Length', tamaño);
+    if (tamaño && !backend.headers.get('content-encoding') && /^\d+$/.test(tamaño)) headers.set('Content-Length', tamaño);
     return new Response(backend.body, { status: 200, headers });
   } catch {
     return NextResponse.json({ ok: false, message: 'No fue posible recuperar la fotografía.' },

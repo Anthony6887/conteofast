@@ -3,9 +3,9 @@
 // Consulta de solo lectura. Mantiene evidencias históricas y las nuevas por dignidad.
 const { QueryTypes } = require('sequelize');
 const { sequelize } = require('../models');
+const storage = require('../services/evidencias-storage');
 
 const validId = x => Number.isSafeInteger(Number(x)) && Number(x) > 0 ? Number(x) : null;
-const allowed = new Set(['ALCALDE', 'CONCEJAL', 'VOCAL', 'GENERAL']);
 const errorReply = (res, error) => {
   console.error('[CONTEOFAST REVISION]', error);
   return res.status(500).json({ ok: false, message: 'No fue posible consultar las actas.' });
@@ -18,15 +18,15 @@ async function recintosConActas(req, res) {
     const filas = await sequelize.query(`
       SELECT r.id AS recinto_id, r.codigo_recinto, r.nombre AS recinto,
              r.parroquia, j.id AS junta_id, j.numero AS junta_numero,
-             j.tipo AS junta_tipo, f.dignidad, f.sha256, f.actualizado_en,
+             j.tipo AS junta_tipo, f.dignidad, f.sha256, f.actualizado_en, f.ruta_archivo, f.tamano_bytes,
              CASE WHEN cd.registro_id IS NOT NULL THEN 1 ELSE 0 END AS finalizada
       FROM (
           SELECT e.registro_id, 'GENERAL' AS dignidad,
-                 e.sha256, e.actualizado_en
+                 e.sha256, e.actualizado_en, e.ruta_archivo, e.tamano_bytes
             FROM cf_registro_evidencias e
           UNION ALL
           SELECT e.registro_id, e.tipo AS dignidad,
-                 e.sha256, e.actualizado_en
+                 e.sha256, e.actualizado_en, e.ruta_archivo, e.tamano_bytes
             FROM cf_registro_dignidad_evidencias e
       ) f
       JOIN cf_registros cr ON cr.id = f.registro_id
@@ -38,7 +38,9 @@ async function recintosConActas(req, res) {
       ORDER BY r.nombre, j.tipo, j.numero, f.dignidad
     `, { type: QueryTypes.SELECT, replacements: { eleccionId } });
     const recintos = new Map();
+    let totalActas = 0;
     for (const row of filas) {
+      if (!await storage.disponible(row)) continue;
       const rid = Number(row.recinto_id);
       if (!recintos.has(rid)) recintos.set(rid, {
         recinto_id: rid,
@@ -66,13 +68,14 @@ async function recintosConActas(req, res) {
           : `/api/conteofast/registro/${junta.id}/dignidad/${dignidad}/foto`
       });
       recinto.total_actas++;
+      totalActas++;
     }
     const datos = [...recintos.values()];
     res.set('Cache-Control', 'no-store');
     return res.json({ ok: true, data: {
       recintos: datos,
       total_recintos: datos.length,
-      total_actas: filas.length
+      total_actas: totalActas
     }});
   } catch (error) { return errorReply(res, error); }
 }
